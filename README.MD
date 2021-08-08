@@ -77,7 +77,7 @@ GCP resources include:
   1. Used by Gitlab Compute instance
   2. Used to push containers to Google Container Registry (GCR)
 - VPC network and related firewall rules
-- Container Registry is automatically created once you push the first container image
+- GCR (automatically created on first container push)
 
 <p align="center">
   <img src="./img/scallops-infra.png" alt="Infrastructure-layout" width="1494">

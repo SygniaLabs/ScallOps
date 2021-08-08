@@ -13,7 +13,7 @@ module "gcp-network" {
       subnet_name   = "${var.infra_name}-offensive-pipeline-subnet"
       subnet_ip     = local.vpc_main_subnet
       subnet_region = var.region
-    },
+    }
   ]
 
   secondary_ranges = {

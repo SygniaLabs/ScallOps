@@ -1,12 +1,14 @@
 ########################### Gitlab Instance #################################################
 
 resource "google_compute_instance" "gitlab" {
-  depends_on   = [module.gcp-network,
+  depends_on   = [
+                  module.gcp-network,
                   google_secret_manager_secret_version.gitlab-self-signed-cert-crt-version,
                   google_secret_manager_secret_version.gitlab-self-signed-cert-key-version,
                   google_secret_manager_secret_version.gitlab_initial_root_pwd,
                   google_secret_manager_secret_version.gitlab_runner_registration_token,
-                  google_secret_manager_secret_version.gitlab_api_token]
+                  google_secret_manager_secret_version.gitlab_api_token
+                  ]
   provider     = google.offensive-pipeline
   name         = "${var.infra_name}-gitlab"
   machine_type = var.plans[var.size]
@@ -176,7 +178,6 @@ resource "kubernetes_secret" "google-application-credentials" {
 
 
 module "gke_auth" {
-  depends_on   = [module.gcp-network]
   source       = "terraform-google-modules/kubernetes-engine/google//modules/auth"
   project_id   = var.project_id
   cluster_name = module.gke.name
@@ -188,8 +189,10 @@ module "gke_auth" {
 
 
 resource "helm_release" "gitlab-runner-linux" {
-  depends_on = [module.gke,
-                module.gke_auth]
+  depends_on = [
+                module.gke,
+                module.gke_auth
+                ]
   name       = "linux"
   chart      = "./gitlab-runner/gitlab-runner_0.27"
   values     = [file("gitlab-runner/linux-values.yaml")]
@@ -214,8 +217,10 @@ resource "helm_release" "gitlab-runner-linux" {
 
 
 resource "helm_release" "gitlab-runner-win" {
-  depends_on = [module.gke,
-                module.gke_auth]
+  depends_on = [
+                module.gke,
+                module.gke_auth
+                ]
   name       = "windows"
   chart      = "./gitlab-runner/gitlab-runner_0.27"
   values     = [file("gitlab-runner/win-values.yaml")]

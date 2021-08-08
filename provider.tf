@@ -16,4 +16,3 @@ provider "helm" {
   token                  = module.gke_auth.token
   }
 }
-
