@@ -7,7 +7,7 @@
 ## Overview
 
 ScallOps is a framework that empowers Red Teams to put more focus on what they need to do, instead of how to do it. 
-It utilizes the CI/CD concept to manage and automate the weaponization and attainability of offensive tools.
+It utilizes the CI/CD concept to manage and automate the weaponization and deployment of offensive tools.
 
 Security teams and individuals can develop, collaborate and utilize the framework's "Recipes" in order to perform their Red Team tasks with greater efficiency.
 
@@ -59,7 +59,8 @@ gitlab_root_password_secret = "<INFRA_NAME>-gitlab-root-password"
 ```
 
 [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository should be pre-imported into the Gitlab insatnce together with all the relevant variables configured. All you have left to do is [designing](https://github.com/SygniaLabs/ScallOps-Recipes#designing-recipes) your recipes :)
-If you don't see it, you can import it [manually](https://docs.gitlab.com/ee/user/project/import/repo_by_url.html).
+If you don't see the Recipes, you can import it [manually](https://docs.gitlab.com/ee/user/project/import/repo_by_url.html).
+
 
 ## Architecture
 
@@ -118,16 +119,16 @@ To make the deployment and usage of this framework as smooth as possible, the fo
 
 1. A Gitlab's instance level CI/CD variable that holds the API key of the root account. This means that any user who will be onboarded to the Gitlab, will be able to design and trigger CI pipeline, extract this API key and further use it.
 
-However, keep in mind that having the API token available to any repository CI pipeline enables you to:
-- Operate with an open [issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4014) workaround when you require to fetch previous artifcats or upload them.
-- Utilize the automatic tool repository importer from the **.tools-index.json** file. (For this feature, you may set the varialbe on the ScallOps-Recipes CI/CD settings only, so it will minimize the risk ot the related contributors).
-
-
 2. See [Container-Builder](https://github.com/SygniaLabs/ScallOps-Recipes/_ci-maintain/dockerfiles/README.md) for GCP storage related security consideration.
 
 **The bottom line:** any registered user on your Gitlab instance will have complete access to your Project's Cloud Storage and Gitlab API.
 
-Don't like these risks? You can waive the Tools Importer and Container Builder features by:
+Keep in mind that having the API token available to any repository's CI settings enables you to:
+- Operate with the open [issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4014) workaround when you require to fetch artifacts from previous jobs or upload them to the current job artifact.
+- Utilize the automatic external repository importer from the [**.tools-index.json**](https://github.com/SygniaLabs/ScallOps-Recipes/ci-tools-controllers/.tools-index.json) file.
+
+
+Don't like these risks? You can waive the Tools Importer and Container Builder [features](https://github.com/SygniaLabs/ScallOps-Recipes#designing-recipes) by:
 1. Login with your root account and follow the [instructions](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#revoke-a-personal-access-token) to revoke the post-deployment personal access token.
 2. Browse to your GCP console, navigte to IAM & Admin -> Service Accounts -> Disable a service account with the convention: **\<INFRA-NAME\>-gke-buckt@<PROJECT_ID>.iam.gserviceaccount.com**. This account was created with permissions to push and pull containers.
 

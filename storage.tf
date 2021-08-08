@@ -17,7 +17,7 @@ resource "google_storage_bucket_object" "disable_windows_defender_ps" {
 resource "google_storage_bucket_object" "gitlab_runner_helper_exe" {
   name   = "bins/gitlab-runner-helper.exe"
   bucket = google_storage_bucket.cicd_utils.name
-  source = "bins/gitlab-runner-helper.exe"
+  source = "gitlab-runner/bins/gitlab-runner-helper.exe"
 }
 
 
