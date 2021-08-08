@@ -31,30 +31,6 @@ module "gcp-network" {
 }
 
 
-
-# Firewall rules
-
-/*
-# Identity Aware Proxy (IAP)
-# IAP is GCP feature used to connect to GCE over SSH with browser
-# TODO: add debug flag, to deploy or not IAP
-resource "google_compute_firewall" "iap_pipeline" {
-  name       = "${var.infra_name}-allow-iap"
-  network    = "${var.infra_name}-offensive-pipeline-vpc"
-  provider   = google.offensive-pipeline
-  depends_on = [module.gcp-network]
-  allow {
-    protocol = "tcp"
-    ports    = ["22"]
-  }
-
-  source_ranges = ["35.235.240.0/20"]
-  target_tags   = ["${var.infra_name}-gitlab"]
-}
-*/
-
-
-
 # Operators access rule
 resource "google_compute_firewall" "operators" {
   depends_on    = [module.gcp-network]

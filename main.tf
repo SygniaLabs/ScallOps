@@ -38,6 +38,7 @@ resource "google_compute_instance" "gitlab" {
                   google_secret_manager_secret_version.gitlab_initial_root_pwd,
                   google_secret_manager_secret_version.gitlab_runner_registration_token,
                   google_secret_manager_secret_version.gitlab_api_token]
+  provider     = google.offensive-pipeline
   name         = "${var.infra_name}-gitlab"
   machine_type = var.plans[var.size]
   zone         = "${var.region}-${var.zone}"
@@ -217,7 +218,7 @@ module "gke_auth" {
 resource "helm_release" "gitlab-runner-linux" {
   depends_on = [module.gcp-network,
                 module.gke,
-                module.gitlab]
+                google_compute_instance.gitlab]
   name       = "linux"
   chart      = "./gitlab-runner/gitlab-runner_0.27"
   values     = [file("gitlab-runner/linux-values.yaml")]
@@ -244,7 +245,7 @@ resource "helm_release" "gitlab-runner-linux" {
 resource "helm_release" "gitlab-runner-win" {
   depends_on = [module.gcp-network,
                 module.gke,
-                module.gitlab,
+                google_compute_instance.gitlab,
                 helm_release.gitlab-runner-linux]
   name       = "windows"
   chart      = "./gitlab-runner/gitlab-runner_0.27"

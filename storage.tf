@@ -28,6 +28,7 @@ resource "google_storage_bucket" "gitlab_deploy_utils" {
   location                    = "US"
   storage_class               = "STANDARD"
   uniform_bucket_level_access = true
+  provider                    = google.offensive-pipeline
 }
 
 resource "google_storage_bucket_object" "gitlab_install_script" {

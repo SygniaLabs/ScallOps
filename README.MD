@@ -128,7 +128,7 @@ Keep in mind that having the API token available to any repository's CI settings
 - Utilize the automatic external repository importer from the [**.tools-index.json**](https://github.com/SygniaLabs/ScallOps-Recipes/ci-tools-controllers/.tools-index.json) file.
 
 
-Don't like these risks? You can waive the Tools Importer and Container Builder [features](https://github.com/SygniaLabs/ScallOps-Recipes#designing-recipes) by:
+Don't like these risks? You can waive the Tools Importer and Container Builder [features](https://github.com/SygniaLabs/ScallOps-Recipes#features) by:
 1. Login with your root account and follow the [instructions](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#revoke-a-personal-access-token) to revoke the post-deployment personal access token.
 2. Browse to your GCP console, navigte to IAM & Admin -> Service Accounts -> Disable a service account with the convention: **\<INFRA-NAME\>-gke-buckt@<PROJECT_ID>.iam.gserviceaccount.com**. This account was created with permissions to push and pull containers.
 
