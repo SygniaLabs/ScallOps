@@ -78,7 +78,7 @@ resource "google_secret_manager_secret_version" "gitlab-self-signed-cert-crt-ver
 # Gitlab installation & deployment
 
 resource "random_password" "gitlab_runner_registration_token" {
-  length           = 16
+  length           = 20
   special          = true
   override_special = "-_"
 }
@@ -88,7 +88,7 @@ resource "random_password" "gitlab_initial_root_pwd" {
 }
 
 resource "random_password" "gitlab_api_token" {
-  length           = 16
+  length           = 20
   special          = true
   override_special = "-_"
 }

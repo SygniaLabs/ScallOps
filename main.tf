@@ -34,8 +34,12 @@ resource "google_compute_instance" "gitlab" {
 
 
   metadata = {
-    gcs-prefix                      = join("", ["gs://",google_storage_bucket.gitlab_deploy_utils.name])
-    startup-script-url              = join("", ["gs://", google_storage_bucket.gitlab_deploy_utils.name, "/", google_storage_bucket_object.gitlab_install_script.name])
+    gcs-prefix                      = "gs://${google_storage_bucket.gitlab_deploy_utils.name}"
+    startup-script-url              = join("", [
+                                                "gs://", google_storage_bucket.gitlab_deploy_utils.name,
+                                                "/",
+                                                google_storage_bucket_object.gitlab_install_script.name
+                                                ])
     cicd-utils-bucket-name          = google_storage_bucket.cicd_utils.name
     instance-ext-domain             = local.instance_internal_domain
     instance-protocol               = var.gitlab_instance_protocol
@@ -60,7 +64,7 @@ module "gke" {
   name                       = "${var.infra_name}-offensive-pipeline-gke"
   regional                   = false
   region                     = var.region #Required if Regional true
-  zones                      = [join("", [var.region, "-", var.zone])]
+  zones                      = ["${var.region}-${var.zone}"]
   network                    = module.gcp-network.network_name
   subnetwork                 = "${var.infra_name}-offensive-pipeline-subnet"
   default_max_pods_per_node  = 80
@@ -123,9 +127,11 @@ module "gke" {
 
     windows-pool = {
       windows                    = true,
-      windows-startup-script-url =  join("", ["gs://", google_storage_bucket.cicd_utils.name,
+      windows-startup-script-url =  join("", [
+                                              "gs://", google_storage_bucket.cicd_utils.name,
                                               "/",
-                                              google_storage_bucket_object.disable_windows_defender_ps.name])
+                                              google_storage_bucket_object.disable_windows_defender_ps.name
+                                              ])
     }
   }
 
@@ -148,10 +154,10 @@ module "gke" {
 resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
   depends_on  = [module.gke_auth]
   data        = {
-    join("", [local.instance_internal_domain, ".crt"]) = tls_self_signed_cert.gitlab-self-signed-cert.cert_pem
+    "${local.instance_internal_domain}.crt" = tls_self_signed_cert.gitlab-self-signed-cert.cert_pem
   }
   metadata {
-    name      = join("", [local.instance_internal_domain, "-cert"])
+    name      = "${local.instance_internal_domain}-cert"
     namespace = "default"
   }
 }
@@ -190,15 +196,15 @@ resource "helm_release" "gitlab-runner-linux" {
 
   set {
     name  = "gitlabUrl"
-    value =  join("", [var.gitlab_instance_protocol, "://", local.instance_internal_domain]) 
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
     name  = "cloneUrl"
-    value =  join("", [var.gitlab_instance_protocol, "://", local.instance_internal_domain]) 
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
     name  = "certsSecretName"
-    value =  join("", [local.instance_internal_domain, "-cert"]) 
+    value = "${local.instance_internal_domain}-cert"
   }
   set_sensitive {
     name  = "runnerRegistrationToken"
@@ -216,21 +222,18 @@ resource "helm_release" "gitlab-runner-win" {
 
   set {
     name  = "gitlabUrl"
-    value =  join("", [var.gitlab_instance_protocol, "://", local.instance_internal_domain]) 
+    value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
     name  = "cloneUrl"
-    value =  join("", [var.gitlab_instance_protocol, "://", local.instance_internal_domain]) 
+    value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
     name  = "certsSecretName"
-    value =  join("", [local.instance_internal_domain, "-cert"]) 
+    value = "${local.instance_internal_domain}-cert"
   }
   set_sensitive {
     name  = "runnerRegistrationToken"
     value = random_password.gitlab_runner_registration_token.result
   }
 }
-
-
-
