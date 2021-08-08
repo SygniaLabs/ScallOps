@@ -87,8 +87,3 @@ variable "zone" {
     description = "Zone in which Gitlab GCE and K8s cluster will be deployed, K8s cluster will be Zonal and not Regional."
     default     = "a"
 }
-
-
-
-
-

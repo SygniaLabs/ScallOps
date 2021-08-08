@@ -74,8 +74,8 @@ GCP resources include:
 - CICD utilities bucket
 - Gitlab deploy utilities bucket
 - 2 Service Accounts
-  - 1 For the Gitlab COmpute instance
-  - 1 to allow us push containers to Google Container Registry (gcr.io)
+  1. Used by Gitlab Compute instance
+  2. Used to push containers to Google Container Registry (GCR)
 - VPC network and related firewall rules
 - Container Registry is automatically created once you push the first container image
 

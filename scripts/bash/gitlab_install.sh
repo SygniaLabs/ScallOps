@@ -90,7 +90,7 @@ sleep 120
 # Set instance level environment variables, so pipelines can utilize them
 echo "INFO: Setting instance level CI/CD variables"
 curl -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GCP_PROJECT_ID" --form "value=$GCP_PROJECT_ID"
-curl -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GITLAB_API_ACCESS" --form "value=$GITLAB_API_TOKEN" # TBD Mask it.
+curl -o /dev/null -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GITLAB_API_ACCESS" --form "value=$GITLAB_API_TOKEN" # TBD Mask it.
 curl -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=CI_CD_UTILS_BUKCET" --form "value=$CI_CD_UTILS_BUKCET"
 
 

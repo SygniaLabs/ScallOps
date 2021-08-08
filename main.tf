@@ -18,7 +18,9 @@ resource "tls_self_signed_cert" "gitlab-self-signed-cert" {
     organization        = "Company"
   }
   
-  dns_names             = ["${var.infra_name}-gitlab.local", local.instance_internal_domain, var.instance_ext_domain]
+  dns_names             = ["${var.infra_name}-gitlab.local",
+                           local.instance_internal_domain,
+                           var.instance_ext_domain]
   ip_addresses          = ["10.0.0.2"]
   validity_period_hours = 87600 //Certificate will be valid for 10 years 
 
@@ -42,7 +44,7 @@ resource "google_compute_instance" "gitlab" {
   name         = "${var.infra_name}-gitlab"
   machine_type = var.plans[var.size]
   zone         = "${var.region}-${var.zone}"
-  tags = ["${var.infra_name}-gitlab"]
+  tags         = ["${var.infra_name}-gitlab"]
 
 
     service_account {
@@ -72,9 +74,9 @@ resource "google_compute_instance" "gitlab" {
     instance-protocol               = var.gitlab_instance_protocol
 	  gitlab-initial-root-pwd-secret	= google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
     gitlab-api-token-secret         = google_secret_manager_secret.gitlab_api_token.secret_id
-    gitlab-ci-runner-registration-token-secret = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
     gitlab-cert-key-secret         	= google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
     gitlab-cert-public-secret	      = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
+    gitlab-ci-runner-registration-token-secret = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
   }
 }
 
