@@ -60,6 +60,7 @@ resource "google_compute_instance" "gitlab" {
 
 
 module "gke" {
+  depends_on                 = [module.gcp-network, google_compute_instance.gitlab]
   source                     = "terraform-google-modules/kubernetes-engine/google"
   version                    = "15.0.0"
   project_id                 = var.project_id
@@ -154,7 +155,7 @@ module "gke" {
 }
 
 resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
-  depends_on  = [module.gke_auth]
+  depends_on  = [module.gke_auth, module.gke]
   data        = {
     "${local.instance_internal_domain}.crt" = tls_self_signed_cert.gitlab-self-signed-cert.cert_pem
   }
@@ -166,7 +167,7 @@ resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
 
 
 resource "kubernetes_secret" "google-application-credentials" {
-  depends_on  = [module.gke_auth]
+  depends_on  = [module.gke_auth, module.gke]
   data        = {
     "kaniko-token-secret.json" = base64decode(google_service_account_key.storage_admin_role.private_key)
   }
@@ -178,6 +179,7 @@ resource "kubernetes_secret" "google-application-credentials" {
 
 
 module "gke_auth" {
+  depends_on   = [module.gcp-network]
   source       = "terraform-google-modules/kubernetes-engine/google//modules/auth"
   project_id   = var.project_id
   cluster_name = module.gke.name
