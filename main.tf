@@ -194,7 +194,8 @@ resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
 
 
 resource "kubernetes_secret" "google-application-credentials" {
-  depends_on  = [google_service_account_key.storage_admin_role]
+  depends_on  = [google_service_account_key.storage_admin_role,
+                 module.gke_auth]
   data        = {
     "kaniko-token-secret.json" = base64decode(google_service_account_key.storage_admin_role.private_key)
   }
@@ -220,6 +221,7 @@ module "gke_auth" {
 resource "helm_release" "gitlab-runner-linux" {
   depends_on = [module.gcp-network,
                 module.gke,
+                module.gke_auth,
                 google_compute_instance.gitlab]
   name       = "linux"
   chart      = "./gitlab-runner/gitlab-runner_0.27"
@@ -247,6 +249,7 @@ resource "helm_release" "gitlab-runner-linux" {
 resource "helm_release" "gitlab-runner-win" {
   depends_on = [module.gcp-network,
                 module.gke,
+                module.gke_auth,
                 google_compute_instance.gitlab,
                 helm_release.gitlab-runner-linux]
   name       = "windows"
