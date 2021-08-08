@@ -1,0 +1,36 @@
+# Gitlab Runner level hosts var
+hostAliases:
+ - ip: "10.0.0.2"
+   hostnames:
+    - "gitlab.local"
+locked: "false"
+tags: "windows, kubernetes"
+rbac:
+ create: true
+ rules:
+ - resources: ["pods", "secrets"]
+   verbs: ["get", "list", "watch", "create", "patch", "delete"]
+runners:
+  config: |
+    [[runners]]
+      name = "shell executor runner"
+      executor = "kubernetes"
+      shell = "pwsh"
+      [runners.kubernetes]
+        helper_image = "b1t0n/gitlab-runner-helper:x86_64-latest-servercore1809-pwsh"
+        namespace = "default"
+        poll_interval = 30
+        poll_timeout = 3600
+        [[runners.kubernetes.host_aliases]]
+          ip = "10.0.0.2"
+          hostnames = ["gitlab.local"]        
+        [runners.kubernetes.node_tolerations]
+          "node.kubernetes.io/os=windows" = "NoSchedule"
+        [runners.kubernetes.affinity]
+          [runners.kubernetes.affinity.node_affinity]
+            [runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution]
+              [[runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms]]
+                [[runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms.match_expressions]]
+                  key = "beta.kubernetes.io/os"
+                  operator = "In"
+                  values = ["windows"]
