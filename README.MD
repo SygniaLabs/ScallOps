@@ -110,7 +110,7 @@ You may find examples to workaround this issue within the ScallOps-Recipes repos
 
 - Deployment does not support the use of your own purchased domain, it currently utilizes a self-signed certificate. Don't try to change the domain on the Gitlab server, as it may break the certificate trust by the runners. This issue will be solved soon.
 
-- Windows related containers are **not** built and deployed automatically to your Container Registry. For now, you will have to do it manually. You can use the supplied [Windows Dockerfiles](https://github.com/SygniaLabs/ScallOps-Recipes/tree/master/_ci-maintain/dockerfiles/windows).
+- Windows related containers are **not** built and deployed automatically to your Container Registry. For now, you will have to do it manually. You can use the supplied [Windows Dockerfiles](https://github.com/SygniaLabs/ScallOps-Recipes/tree/main/_ci-maintain/dockerfiles/windows).
 
 
 ## Security Considerations
@@ -119,13 +119,13 @@ To make the deployment and usage of this framework as smooth as possible, the fo
 
 1. A Gitlab's instance level CI/CD variable that holds the API key of the root account. This means that any user who will be onboarded to the Gitlab, will be able to design and trigger CI pipeline, extract this API key and further use it.
 
-2. See [Container-Builder](https://github.com/SygniaLabs/ScallOps-Recipes/tree/master/_ci-maintain/dockerfiles) for GCP storage related security consideration.
+2. See [Container-Builder](https://github.com/SygniaLabs/ScallOps-Recipes/tree/main/_ci-maintain/dockerfiles) for GCP storage related security consideration.
 
 **The bottom line:** any registered user on your Gitlab instance will have complete access to your Project's Cloud Storage and Gitlab API.
 
 Keep in mind that having the API token available to any repository's CI settings enables you to:
 - Operate with the open [issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4014) workaround when you require to fetch artifacts from previous jobs or upload them to the current job artifact.
-- Utilize the automatic external repository importer from the [**.tools-index.json**](https://github.com/SygniaLabs/ScallOps-Recipes/tree/master/ci-tools-controllers/.tools-index.json) file.
+- Utilize the automatic external repository importer from the [**.tools-index.json**](https://github.com/SygniaLabs/ScallOps-Recipes/tree/main/ci-tools-controllers/.tools-index.json) file.
 
 
 Don't like these risks? You can waive the Tools Importer and Container Builder [features](https://github.com/SygniaLabs/ScallOps-Recipes#features) by:
