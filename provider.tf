@@ -3,10 +3,9 @@ provider "google" {
     project = var.project_id
 }
 
-
 provider "kubernetes" {
-  host     = module.gke_auth.host
-  token             = module.gke_auth.token
+  host                   = module.gke_auth.host
+  token                  = module.gke_auth.token
   cluster_ca_certificate = module.gke_auth.cluster_ca_certificate
 }
 

@@ -1,11 +1,21 @@
-#Required
-project_id = "" //GCP Project ID
-infra_name = "" //must comply with [a-z]([-a-z0-9]*[a-z0-9])
+#### Required ####
+
+# GCP Project ID
+project_id = ""
+# The name you wish to have as a prefix for the deployment's resources. Must comply with [a-z]([-a-z0-9]*[a-z0-9])
+infra_name = ""
+
+#### Optional ####
+
+# Office IP / home IPs
+operator_ips = [""] 
 
 
-#Optional
-operator_ips = [""] # Office IP / home IPs
-// Defaults
-#gitlab_instance_protocol = "https" // http or https
-#zone = "a"   // Zone for the k8s cluster, Gitlab instance and network
-#region = us-central-1 // Region for the k8s cluster, Gitlab instance and network
+# Default deployment values, uncommenct and modify only if needed (us-central-1 considered to be the cheapest).
+
+# The Gitlab instance Web server protocol, http or https.
+# gitlab_instance_protocol = "https" 
+# Zone for the k8s cluster, Gitlab instance and network.
+# zone = "a"
+# Region for the k8s cluster, Gitlab instance and network.
+# region = us-central-1 
