@@ -1,42 +1,9 @@
-############################# Gitlab instance ###############################################
-
-
-# Self signed TLS certificate generation
-
-resource "tls_private_key" "gitlab-self-signed-cert-key" {
-  algorithm   = "ECDSA"
-  ecdsa_curve = "P384"
-}
-
-resource "tls_self_signed_cert" "gitlab-self-signed-cert" {
-  depends_on            = [tls_private_key.gitlab-self-signed-cert-key]
-  key_algorithm         = "ECDSA"
-  private_key_pem       = tls_private_key.gitlab-self-signed-cert-key.private_key_pem
-
-  subject {
-    common_name         = "gitlab.local"
-    organization        = "Company"
-  }
-  
-  dns_names             = ["${var.infra_name}-gitlab.local",
-                           local.instance_internal_domain,
-                           var.instance_ext_domain]
-  ip_addresses          = ["10.0.0.2"]
-  validity_period_hours = 87600 //Certificate will be valid for 10 years 
-
-  allowed_uses          = ["key_encipherment",
-                           "digital_signature"]
-}
-
-
 ########################### Gitlab Instance #################################################
 
 resource "google_compute_instance" "gitlab" {
-  depends_on   = [google_storage_bucket_object.gitlab_install_script,
-                  module.gcp-network,
+  depends_on   = [module.gcp-network,
                   google_secret_manager_secret_version.gitlab-self-signed-cert-crt-version,
                   google_secret_manager_secret_version.gitlab-self-signed-cert-key-version,
-                  google_service_account.gitlab_service_account,
                   google_secret_manager_secret_version.gitlab_initial_root_pwd,
                   google_secret_manager_secret_version.gitlab_runner_registration_token,
                   google_secret_manager_secret_version.gitlab_api_token]
@@ -87,9 +54,6 @@ resource "google_compute_instance" "gitlab" {
 
 
 module "gke" {
-  depends_on                 = [module.gcp-network,
-                                google_service_account.gke_bucket_service_account,
-                                google_project_iam_member.storage_admin_role]
   source                     = "terraform-google-modules/kubernetes-engine/google"
   version                    = "15.0.0"
   project_id                 = var.project_id
@@ -97,7 +61,7 @@ module "gke" {
   regional                   = false
   region                     = var.region #Required if Regional true
   zones                      = [join("", [var.region, "-", var.zone])]
-  network                    = "${var.infra_name}-offensive-pipeline-vpc"
+  network                    = module.gcp-network.network_name
   subnetwork                 = "${var.infra_name}-offensive-pipeline-subnet"
   default_max_pods_per_node  = 80
   ip_range_pods              = "${var.infra_name}-gke-pods-subnet"
@@ -182,7 +146,7 @@ module "gke" {
 }
 
 resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
-  depends_on  = [tls_self_signed_cert.gitlab-self-signed-cert]
+  depends_on  = [module.gke_auth]
   data        = {
     join("", [local.instance_internal_domain, ".crt"]) = tls_self_signed_cert.gitlab-self-signed-cert.cert_pem
   }
@@ -194,8 +158,7 @@ resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
 
 
 resource "kubernetes_secret" "google-application-credentials" {
-  depends_on  = [google_service_account_key.storage_admin_role,
-                 module.gke_auth]
+  depends_on  = [module.gke_auth]
   data        = {
     "kaniko-token-secret.json" = base64decode(google_service_account_key.storage_admin_role.private_key)
   }
@@ -219,10 +182,8 @@ module "gke_auth" {
 
 
 resource "helm_release" "gitlab-runner-linux" {
-  depends_on = [module.gcp-network,
-                module.gke,
-                module.gke_auth,
-                google_compute_instance.gitlab]
+  depends_on = [module.gke,
+                module.gke_auth]
   name       = "linux"
   chart      = "./gitlab-runner/gitlab-runner_0.27"
   values     = [file("gitlab-runner/linux-values.yaml")]
@@ -247,11 +208,8 @@ resource "helm_release" "gitlab-runner-linux" {
 
 
 resource "helm_release" "gitlab-runner-win" {
-  depends_on = [module.gcp-network,
-                module.gke,
-                module.gke_auth,
-                google_compute_instance.gitlab,
-                helm_release.gitlab-runner-linux]
+  depends_on = [module.gke,
+                module.gke_auth]
   name       = "windows"
   chart      = "./gitlab-runner/gitlab-runner_0.27"
   values     = [file("gitlab-runner/win-values.yaml")]

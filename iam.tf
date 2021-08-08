@@ -36,8 +36,6 @@ resource "google_service_account_key" "storage_admin_role" {
 
 #IAM Bindings for Gitlab instance to secrets
 resource "google_secret_manager_secret_iam_binding" "gitlab-self-key-binding" {
-  depends_on = [google_secret_manager_secret.gitlab-self-signed-cert-key,
-                google_service_account.gitlab_service_account]
   project    = google_secret_manager_secret.gitlab-self-signed-cert-key.project
   secret_id  = google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
   role       = "roles/secretmanager.secretAccessor"
@@ -47,8 +45,6 @@ resource "google_secret_manager_secret_iam_binding" "gitlab-self-key-binding" {
 }
 
 resource "google_secret_manager_secret_iam_binding" "gitlab-self-crt-binding" {
-  depends_on = [google_secret_manager_secret.gitlab-self-signed-cert-crt,
-                google_service_account.gitlab_service_account]
   project    = google_secret_manager_secret.gitlab-self-signed-cert-crt.project
   secret_id  = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
   role       = "roles/secretmanager.secretAccessor"
@@ -59,8 +55,6 @@ resource "google_secret_manager_secret_iam_binding" "gitlab-self-crt-binding" {
 
 
 resource "google_secret_manager_secret_iam_binding" "gitlab_runner_registration_token" {
-  depends_on = [google_secret_manager_secret.gitlab_runner_registration_token,
-                google_service_account.gitlab_service_account]
   project    = google_secret_manager_secret.gitlab_runner_registration_token.project
   secret_id  = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
   role       = "roles/secretmanager.secretAccessor"
@@ -71,8 +65,6 @@ resource "google_secret_manager_secret_iam_binding" "gitlab_runner_registration_
 
 
 resource "google_secret_manager_secret_iam_binding" "gitlab_initial_root_pwd" {
-  depends_on = [google_secret_manager_secret.gitlab_initial_root_pwd,
-                google_service_account.gitlab_service_account]
   project    = google_secret_manager_secret.gitlab_initial_root_pwd.project
   secret_id  = google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
   role       = "roles/secretmanager.secretAccessor"
@@ -82,8 +74,6 @@ resource "google_secret_manager_secret_iam_binding" "gitlab_initial_root_pwd" {
 }
 
 resource "google_secret_manager_secret_iam_binding" "gitlab_api_token" {
-  depends_on = [google_secret_manager_secret.gitlab_api_token,
-                google_service_account.gitlab_service_account]
   project    = google_secret_manager_secret.gitlab_api_token.project
   secret_id  = google_secret_manager_secret.gitlab_api_token.secret_id
   role       = "roles/secretmanager.secretAccessor"

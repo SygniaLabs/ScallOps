@@ -11,7 +11,7 @@ module "gcp-network" {
   subnets = [
     {
       subnet_name   = "${var.infra_name}-offensive-pipeline-subnet"
-      subnet_ip     = "${local.vpc_main_subnet}"
+      subnet_ip     = local.vpc_main_subnet
       subnet_region = var.region
     },
   ]
@@ -20,11 +20,11 @@ module "gcp-network" {
     ("${var.infra_name}-offensive-pipeline-subnet") = [
       {
         range_name    = "${var.infra_name}-gke-pods-subnet"
-        ip_cidr_range = "${local.gke_pod_subnet}"
+        ip_cidr_range = local.gke_pod_subnet
       },
       {
         range_name    = "${var.infra_name}-gke-service-subnet"
-        ip_cidr_range = "${local.gke_svc_subnet}"
+        ip_cidr_range = local.gke_svc_subnet
       }
     ]
   }
@@ -33,9 +33,8 @@ module "gcp-network" {
 
 # Operators access rule
 resource "google_compute_firewall" "operators" {
-  depends_on    = [module.gcp-network]
   name          = "${var.infra_name}-operators-access"
-  network       = "${var.infra_name}-offensive-pipeline-vpc"
+  network       = module.gcp-network.network_name
   provider      = google.offensive-pipeline
   source_ranges = var.operator_ips
   target_tags   = ["${var.infra_name}-gitlab"]
@@ -49,9 +48,8 @@ resource "google_compute_firewall" "operators" {
 
 # Rule allowing internal access from K8s' Pods to Gitlab
 resource "google_compute_firewall" "pods-to-gitlab-access" {
-  depends_on    = [module.gcp-network]
   name          = "${var.infra_name}-gke-pods-gitlab-access"
-  network       = "${var.infra_name}-offensive-pipeline-vpc"
+  network       = module.gcp-network.network_name
   provider      = google.offensive-pipeline
   source_ranges = [local.gke_pod_subnet]
   target_tags   = ["${var.infra_name}-gitlab"]
