@@ -56,8 +56,106 @@ resource "google_compute_instance" "gitlab" {
 
 
 
+################################ Helm chart deployments ##############################
+
+
+resource "helm_release" "gitlab-runner-linux" {
+  depends_on = [
+                module.gke,
+                module.gke_auth
+                ]
+  name       = "linux"
+  repository = "https://charts.gitlab.io/gitlab"
+  chart      = "gitlab-runner-0.32.0-rc1"
+  # version    = "0.32.0-rc1" 
+  values     = [
+    file("gitlab-runner/linux-values.yaml")
+    ]
+
+  set {
+    name  = "gitlabUrl"
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+  }
+  set {
+    name  = "cloneUrl"
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+  }
+  set {
+    name  = "certsSecretName"
+    value = "${local.instance_internal_domain}-cert"
+  }
+  set_sensitive {
+    name  = "runnerRegistrationToken"
+    value = random_password.gitlab_runner_registration_token.result
+  }
+}
+
+
+resource "helm_release" "gitlab-runner-win" {
+  depends_on = [
+                module.gke,
+                module.gke_auth
+                ]
+  name       = "windows"
+  repository = "https://charts.gitlab.io/"
+  chart      = "gitlab-runner-0.32.0-rc1"
+  # version    = "0.32.0-rc1" 
+  values     = [
+    file("gitlab-runner/win-values.yaml")
+    ]
+
+  set {
+    name  = "gitlabUrl"
+    value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+  }
+  set {
+    name  = "cloneUrl"
+    value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+  }
+  set {
+    name  = "certsSecretName"
+    value = "${local.instance_internal_domain}-cert"
+  }
+  set_sensitive {
+    name  = "runnerRegistrationToken"
+    value = random_password.gitlab_runner_registration_token.result
+  }
+}
+
 ########################### GKE Cluster #################################################
 
+
+resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
+  depends_on  = [module.gke_auth, module.gke]
+  data        = {
+    "${local.instance_internal_domain}.crt" = tls_self_signed_cert.gitlab-self-signed-cert.cert_pem
+  }
+  metadata {
+    name      = "${local.instance_internal_domain}-cert"
+    namespace = "default"
+  }
+}
+
+
+resource "kubernetes_secret" "google-application-credentials" {
+  depends_on  = [module.gke_auth, module.gke]
+  data        = {
+    "kaniko-token-secret.json" = base64decode(google_service_account_key.storage_admin_role.private_key)
+  }
+  metadata {
+    name      = "kaniko-secret"
+    namespace = "default"
+  }
+}
+
+
+module "gke_auth" {
+  depends_on   = [module.gcp-network]
+  source       = "terraform-google-modules/kubernetes-engine/google//modules/auth"
+  project_id   = var.project_id
+  cluster_name = module.gke.name
+  location     = module.gke.location
+}
 
 module "gke" {
   depends_on                 = [module.gcp-network, google_compute_instance.gitlab]
@@ -99,7 +197,7 @@ module "gke" {
     {
       name                   = "windows-pool"
       machine_type           = "n1-standard-2"
-      min_count              = 0
+      min_count              = 1
       max_count              = 8
       local_ssd_count        = 0
       disk_size_gb           = 200
@@ -109,7 +207,7 @@ module "gke" {
       auto_upgrade           = false
       service_account        = ""
       preemptible            = false
-      initial_node_count     = 0
+      initial_node_count     = 1
     }    
   ] 
 
@@ -151,96 +249,5 @@ module "gke" {
 
   node_pools_tags = {
     all = []
-  }
-}
-
-resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
-  depends_on  = [module.gke_auth, module.gke]
-  data        = {
-    "${local.instance_internal_domain}.crt" = tls_self_signed_cert.gitlab-self-signed-cert.cert_pem
-  }
-  metadata {
-    name      = "${local.instance_internal_domain}-cert"
-    namespace = "default"
-  }
-}
-
-
-resource "kubernetes_secret" "google-application-credentials" {
-  depends_on  = [module.gke_auth, module.gke]
-  data        = {
-    "kaniko-token-secret.json" = base64decode(google_service_account_key.storage_admin_role.private_key)
-  }
-  metadata {
-    name      = "kaniko-secret"
-    namespace = "default"
-  }
-}
-
-
-module "gke_auth" {
-  depends_on   = [module.gcp-network]
-  source       = "terraform-google-modules/kubernetes-engine/google//modules/auth"
-  project_id   = var.project_id
-  cluster_name = module.gke.name
-  location     = module.gke.location
-}
-
-
-################################ Helm chart deployments ##############################
-
-
-resource "helm_release" "gitlab-runner-linux" {
-  depends_on = [
-                module.gke,
-                module.gke_auth
-                ]
-  name       = "linux"
-  chart      = "./gitlab-runner/gitlab-runner_0.27"
-  values     = [file("gitlab-runner/linux-values.yaml")]
-
-  set {
-    name  = "gitlabUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
-  }
-  set {
-    name  = "cloneUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
-  }
-  set {
-    name  = "certsSecretName"
-    value = "${local.instance_internal_domain}-cert"
-  }
-  set_sensitive {
-    name  = "runnerRegistrationToken"
-    value = random_password.gitlab_runner_registration_token.result
-  }
-}
-
-
-resource "helm_release" "gitlab-runner-win" {
-  depends_on = [
-                module.gke,
-                module.gke_auth
-                ]
-  name       = "windows"
-  chart      = "./gitlab-runner/gitlab-runner_0.27"
-  values     = [file("gitlab-runner/win-values.yaml")]
-
-  set {
-    name  = "gitlabUrl"
-    value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
-  }
-  set {
-    name  = "cloneUrl"
-    value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
-  }
-  set {
-    name  = "certsSecretName"
-    value = "${local.instance_internal_domain}-cert"
-  }
-  set_sensitive {
-    name  = "runnerRegistrationToken"
-    value = random_password.gitlab_runner_registration_token.result
   }
 }

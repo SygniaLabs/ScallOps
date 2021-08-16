@@ -51,7 +51,7 @@ variable "size" {
 variable "osimages" {
   type       = map
   default    = {
-        "ubuntu" = "ubuntu-1804-bionic-v20200916"
+        "ubuntu" = "ubuntu-1804-bionic-v20210720"
   }
 }
 
