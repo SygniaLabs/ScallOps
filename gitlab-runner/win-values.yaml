@@ -4,33 +4,34 @@ hostAliases:
    hostnames:
     - "gitlab.local"
 locked: "false"
-tags: "windows, kubernetes"
+logLevel: debug
 rbac:
  create: true
  rules:
- - resources: ["pods", "secrets"]
-   verbs: ["get", "list", "watch", "create", "patch", "delete"]
+ - resources: ["pods", "secrets", "configmaps","pods/attach", "pods/exec"]
+   verbs: ["*"]
+  #  verbs: ["get", "list", "watch", "create", "patch", "delete", "update"]
 runners:
+  tags: "windows,kubernetes"
   config: |
     [[runners]]
       name = "shell executor runner"
       executor = "kubernetes"
-      shell = "pwsh"
+      builds_dir = "C:\\GitLab-Runner\\builds"
+      cache_dir = "C:\\GitLab-Runner\\cache"
+      shell  = "powershell"
+      
+      # The FF_USE_POWERSHELL_PATH_RESOLVER feature flag has to be enabled for PowerShell 
+      # to resolve paths for Windows correctly when Runner is operating in a Linux environment
+      # but targeting Windows nodes.
+      environment = ["FF_USE_POWERSHELL_PATH_RESOLVER=1", "FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY=true"]
+
+      [runners.kubernetes.node_selector]
+        "kubernetes.io/os" = "windows"
+        "node.kubernetes.io/windows-build" = "10.0.17763"
+        "kubernetes.io/arch" = "amd64"
+
       [runners.kubernetes]
-        helper_image = "b1t0n/gitlab-runner-helper:x86_64-latest-servercore1809-pwsh"
         namespace = "default"
         poll_interval = 30
         poll_timeout = 3600
-        [[runners.kubernetes.host_aliases]]
-          ip = "10.0.0.2"
-          hostnames = ["gitlab.local"]        
-        [runners.kubernetes.node_tolerations]
-          "node.kubernetes.io/os=windows" = "NoSchedule"
-        [runners.kubernetes.affinity]
-          [runners.kubernetes.affinity.node_affinity]
-            [runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution]
-              [[runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms]]
-                [[runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms.match_expressions]]
-                  key = "beta.kubernetes.io/os"
-                  operator = "In"
-                  values = ["windows"]

@@ -1,6 +1,3 @@
-#### Networking ####
-
-
 # VPC and subnets
 
 module "gcp-network" {

@@ -14,7 +14,8 @@ fi
 
 # Install Dependencies
 sudo apt-get update
-sudo apt-get install -y curl openssh-server ca-certificates tzdata perl jq
+# sudo apt-get install -y curl openssh-server ca-certificates tzdata perl jq
+sudo apt-get install -y curl ca-certificates tzdata perl jq
 
 
 

@@ -4,17 +4,24 @@ hostAliases:
    hostnames:
     - "gitlab.local"
 locked: "false"
-tags: "linux, kubernetes"
+logLevel: debug
 rbac:
  create: true
  rules:
- - resources: ["pods", "secrets"]
-   verbs: ["get", "list", "watch", "create", "patch", "delete"]
+ - resources: ["pods", "secrets", "configmaps", "pods/attach", "pods/exec"]
+   verbs: ["*"]
+  #  verbs: ["get", "list", "watch", "create", "patch", "delete", "update", "attach"]
+
 runners:
+  tags: "linux,kubernetes"
   config: |
     [[runners]]
       executor = "kubernetes"
       shell = "bash"
+      
+      [runners.kubernetes.node_selector]
+        "kubernetes.io/os" = "linux"
+
       [runners.kubernetes]
         namespace = "default"
         poll_interval = 30
@@ -26,11 +33,3 @@ runners:
           name = "kaniko-secret"
           mount_path = "/secret"
           read_only = true
-        [runners.kubernetes.affinity]
-          [runners.kubernetes.affinity.node_affinity]
-            [runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution]
-              [[runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms]]
-                [[runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms.match_expressions]]
-                  key = "kubernetes.io/os"
-                  operator = "In"
-                  values = ["linux"]

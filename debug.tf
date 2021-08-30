@@ -1,6 +1,5 @@
 ### Debugging resources ####
 
-
 # Firewall rules
 
 /*
@@ -21,7 +20,33 @@ resource "google_compute_firewall" "iap_pipeline" {
 }
 */
 
+# FW rule for connecting to linux nodes
+# resource "google_compute_firewall" "ssh_linux_nodes" {
+#   name       = "gke-${var.infra_name}-debug-linux-nodes"
+#   network    = module.gcp-network.network_name
+#   provider   = google.offensive-pipeline
+#   allow {
+#     protocol = "tcp"
+#     ports    = ["22"]
+#   }
 
+#   source_ranges = var.operator_ips
+#   target_tags   = ["gke-${var.infra_name}-offensive-pipeline-gke-linux-pool"]
+# }
+
+# FW rule for connecting to windows nodes
+# resource "google_compute_firewall" "rdp_windows_nodes" {
+#   name       = "gke-${var.infra_name}-debug-windows-nodes"
+#   network    = module.gcp-network.network_name
+#   provider   = google.offensive-pipeline
+#   allow {
+#     protocol = "tcp"
+#     ports    = ["3389"]
+#   }
+
+#   source_ranges = var.operator_ips
+#   target_tags   = ["gke-${var.infra_name}-offensive-pipeline-gke-windows-pool"]
+# }
 
 # DEBUG: Save Gitlab Server certificate.
 /*
