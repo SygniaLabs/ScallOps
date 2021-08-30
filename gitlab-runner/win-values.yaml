@@ -5,7 +5,6 @@ hostAliases:
     - "gitlab.local"
 locked: "false"
 logLevel: debug
-tags: "windows,kubernetes"
 rbac:
  create: true
  rules:
@@ -13,6 +12,7 @@ rbac:
    verbs: ["*"]
   #  verbs: ["get", "list", "watch", "create", "patch", "delete", "update"]
 runners:
+  tags: "windows,kubernetes"
   config: |
     [[runners]]
       name = "shell executor runner"
@@ -24,7 +24,7 @@ runners:
       # The FF_USE_POWERSHELL_PATH_RESOLVER feature flag has to be enabled for PowerShell 
       # to resolve paths for Windows correctly when Runner is operating in a Linux environment
       # but targeting Windows nodes.
-      environment = ["FF_USE_POWERSHELL_PATH_RESOLVER=1"]
+      environment = ["FF_USE_POWERSHELL_PATH_RESOLVER=1", "FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY=true"]
 
       [runners.kubernetes.node_selector]
         "kubernetes.io/os" = "windows"

@@ -65,9 +65,9 @@ resource "helm_release" "gitlab-runner-linux" {
                 module.gke_auth
                 ]
   name       = "linux"
-  repository = "https://charts.gitlab.io/gitlab"
-  chart      = "gitlab-runner-0.32.0-rc1"
-  # version    = "0.32.0-rc1" 
+  # repository = "https://charts.gitlab.io/gitlab"
+  chart      = "https://gitlab.com/gitlab-org/charts/gitlab-runner/-/archive/v0.32.0/gitlab-runner-v0.32.0.tar.gz"
+  
   values     = [
     file("gitlab-runner/linux-values.yaml")
     ]
@@ -97,9 +97,9 @@ resource "helm_release" "gitlab-runner-win" {
                 module.gke_auth
                 ]
   name       = "windows"
-  repository = "https://charts.gitlab.io/"
-  chart      = "gitlab-runner-0.32.0-rc1"
-  # version    = "0.32.0-rc1" 
+  # repository = "https://charts.gitlab.io"
+  chart      = "https://gitlab.com/gitlab-org/charts/gitlab-runner/-/archive/v0.32.0/gitlab-runner-v0.32.0.tar.gz"
+  
   values     = [
     file("gitlab-runner/win-values.yaml")
     ]
