@@ -69,7 +69,7 @@ resource "helm_release" "gitlab-runner-linux" {
   chart      = "https://gitlab.com/gitlab-org/charts/gitlab-runner/-/archive/v0.32.0/gitlab-runner-v0.32.0.tar.gz"
   
   values     = [
-    file("gitlab-runner/linux-values.yaml")
+    file("${path.module}/gitlab-runner/linux-values.yaml")
     ]
 
   set {
@@ -101,7 +101,7 @@ resource "helm_release" "gitlab-runner-win" {
   chart      = "https://gitlab.com/gitlab-org/charts/gitlab-runner/-/archive/v0.32.0/gitlab-runner-v0.32.0.tar.gz"
   
   values     = [
-    file("gitlab-runner/win-values.yaml")
+    file("${path.module}/gitlab-runner/win-values.yaml")
     ]
 
   set {
