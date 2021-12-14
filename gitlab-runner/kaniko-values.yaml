@@ -3,8 +3,7 @@ hostAliases:
  - ip: "10.0.0.2"
    hostnames:
     - "gitlab.local"
-locked: "false"
-logLevel: debug
+locked: "true"
 rbac:
  create: true
  rules:
@@ -13,7 +12,7 @@ rbac:
   #  verbs: ["get", "list", "watch", "create", "patch", "delete", "update", "attach"]
 
 runners:
-  tags: "linux,kubernetes"
+  tags: "kaniko,kubernetes"
   config: |
     [[runners]]
       executor = "kubernetes"
@@ -23,9 +22,13 @@ runners:
         "kubernetes.io/os" = "linux"
 
       [runners.kubernetes]
-        namespace = "default"
+        namespace = "sensitive"
         poll_interval = 30
         poll_timeout = 3600
         [[runners.kubernetes.host_aliases]]
           ip = "10.0.0.2"
           hostnames = ["gitlab.local"]
+        [[runners.kubernetes.volumes.secret]]
+          name = "kaniko-secret"
+          mount_path = "/secret"
+          read_only = true

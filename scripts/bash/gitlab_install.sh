@@ -23,7 +23,7 @@ sudo apt-get install -y curl ca-certificates tzdata perl jq
 ## Network variables
 INSTANCE_PROTOCOL=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/instance-protocol` #http/https
 echo "INFO: Protocol is $INSTANCE_PROTOCOL"
-INSTANCE_EXTERNAL_DOMAIN=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/instance-ext-domain`
+INSTANCE_EXTERNAL_DOMAIN=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/instance-internal-domain`
 echo "INFO: domain name is $INSTANCE_EXTERNAL_DOMAIN"
 EXTERNAL_IP=`curl -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip`
 echo "INFO: external IP is $EXTERNAL_IP"
@@ -147,3 +147,9 @@ then
 else
     echo "INFO: SCALLOPS-RECIPES Import failed or still in-progress, you can trigger the pipline manually."
 fi
+
+
+# Remove startup script reference (prevent from running on rebbot)
+name=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/name`
+zone=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/zone | cut -d'/' -f 4`
+gcloud compute instances remove-metadata "$name" --zone="$zone" --keys=startup-script-url

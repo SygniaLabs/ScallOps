@@ -20,7 +20,7 @@ resource "tls_self_signed_cert" "gitlab-self-signed-cert" {
   dns_names             = [
                            "${var.infra_name}-gitlab.local",
                            local.instance_internal_domain,
-                           var.instance_ext_domain
+                           var.external_hostname
                            ]
   ip_addresses          = ["10.0.0.2"]
   validity_period_hours = 87600 //Certificate will be valid for 10 years 

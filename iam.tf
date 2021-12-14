@@ -9,7 +9,7 @@ resource "google_service_account" "gitlab_service_account" {
 
 # Gitlab instance IAM Binding to storage
 resource "google_storage_bucket_iam_binding" "binding" {
-  bucket  = google_storage_bucket.gitlab_deploy_utils.name
+  bucket  = google_storage_bucket.deployment_utils.name
   role    = "roles/storage.objectViewer"
   members = [
     "serviceAccount:${google_service_account.gitlab_service_account.email}"

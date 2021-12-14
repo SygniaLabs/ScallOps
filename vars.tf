@@ -4,6 +4,12 @@ variable "project_id" {
     description = "(required) GCP Project ID to deploy to"
 }
 
+variable "dns_project_id" {
+    type        = string
+    description = "If provided external_hostname, specify GCP Project ID where managed zone is located"
+    default     = ""
+}
+
 variable "infra_name" {
     type        = string
     description = "(required) Infrastructure name or Team name" 
@@ -15,12 +21,6 @@ variable "infra_name" {
 
 
 # Gitlab instance related variables
-variable "instance_ext_domain" {
-    type        = string
-    description = "(optional) External domain for the Gitlab instance" //Doesn't affect the deploynment yet
-    default     = "gitlab.local"  // Don't leave it empty. Certificate creation will be failed without errors!
-}
-
 
 variable "gitlab_instance_protocol" {
     type        = string
@@ -85,3 +85,26 @@ variable "zone" {
     description = "(optional) Zone in which Gitlab GCE and K8s cluster will be deployed, K8s cluster will be Zonal and not Regional."
     default     = "a"
 }
+
+
+
+
+# DNS and managed zone variables
+variable "external_hostname" {
+  description = "The external hostname to be configured for the instance. e.g. scallops.example.com"
+  type        = string
+  default     = ""
+}
+
+variable "dns_managed_zone_name" {
+  description = "The name of the Cloud DNS Managed Zone in which to create the DNS A Records specified in external_hostname. Only use if provided external_hostname. e.g. example-com"
+  type        = string
+  default     = ""
+}
+
+variable "dns_record_ttl" {
+  description = "The time-to-live for the site A records (seconds)"
+  type        = number
+  default     = 300
+}
+
