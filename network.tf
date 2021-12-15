@@ -64,7 +64,7 @@ resource "google_compute_firewall" "pods-to-gitlab-access" {
 resource "google_dns_record_set" "ext-dns" {
   provider = google.dns_infra
   count   = var.external_hostname != "" ? 1 : 0
-  name = var.external_hostname
+  name = "${var.external_hostname}."
   type = "A"
   ttl  = var.dns_record_ttl
   managed_zone = var.dns_managed_zone_name

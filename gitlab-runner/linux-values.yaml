@@ -20,7 +20,7 @@ runners:
       shell = "bash"
       
       [runners.kubernetes.node_selector]
-        "kubernetes.io/os" = "linux"
+        "node_pool" = "linux-pool"
 
       [runners.kubernetes]
         namespace = "default"

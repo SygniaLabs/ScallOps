@@ -7,6 +7,15 @@ resource "google_service_account" "gitlab_service_account" {
   project      = var.project_id
 }
 
+resource "google_project_iam_binding" "sa_binding" {
+  provider = google.offensive-pipeline
+  role     = "roles/iam.serviceAccountUser"
+
+  members  = [
+    "serviceAccount:${google_service_account.gitlab_service_account.email}"
+  ]
+}
+
 # Gitlab instance IAM Binding to storage
 resource "google_storage_bucket_iam_binding" "binding" {
   bucket  = google_storage_bucket.deployment_utils.name
@@ -15,6 +24,24 @@ resource "google_storage_bucket_iam_binding" "binding" {
     "serviceAccount:${google_service_account.gitlab_service_account.email}"
   ]
 }
+
+# To allow startup script remove itself from metadata
+resource "google_project_iam_custom_role" "compute_metadata_role" {
+  role_id     = "gitlab_setMetadata_${var.infra_name}"
+  title       = "Set Metadata Custom"
+  description = "A role attached to the gitlab compute instance allowing it to set compute metadata variables."
+  permissions = ["compute.instances.get", "compute.instances.setMetadata"]
+  provider    = google.offensive-pipeline
+}
+
+resource "google_project_iam_binding" "compute_binding" {
+  provider = google.offensive-pipeline
+  role     = google_project_iam_custom_role.compute_metadata_role.name
+  members  = [
+    "serviceAccount:${google_service_account.gitlab_service_account.email}",
+  ]
+}
+
 
 # GKE Container with storage.admin permission service account (Capability to push container images to GCR.IO)
 resource "google_service_account" "gke_bucket_service_account" {
