@@ -28,3 +28,26 @@ resource "google_storage_bucket_object" "gitlab_install_script" {
   bucket = google_storage_bucket.deployment_utils.name
   source = "${path.module}/scripts/bash/gitlab_install.sh"
 }
+
+
+# Migration resource
+
+resource "google_storage_bucket_object" "gitlab_migrate_script" {
+  count  = var.migrate_gitlab ? 1 : 0
+  name   = "scripts/bash/gitlab_migrate.sh"
+  bucket = google_storage_bucket.deployment_utils.name
+  source = "${path.module}/scripts/bash/gitlab_migrate.sh"
+}
+
+data "google_storage_bucket_object_content" "gitlab_backup" {
+  count  = var.migrate_gitlab ? 1 : 0
+  name   = var.migrate_gitlab_backup_path
+  bucket = var.migrate_gitlab_backup_bucket
+}
+
+resource "google_storage_bucket_object" "gitlab_migrate_backup" {
+  count  = var.migrate_gitlab ? 1 : 0  
+  name   = var.migrate_gitlab_backup_path
+  bucket = google_storage_bucket.deployment_utils.name
+  source = data.google_storage_bucket_object_content.gitlab_backup.content
+}

@@ -36,17 +36,18 @@ resource "google_compute_instance" "gitlab" {
 
   metadata = {
     gcs-prefix                      = "gs://${google_storage_bucket.deployment_utils.name}"
-    startup-script-url              = join("", [
-                                                "gs://", google_storage_bucket.deployment_utils.name,
-                                                "/",
-                                                google_storage_bucket_object.gitlab_install_script.name
-                                                ])
-    instance-external-domain             = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
+    # Migrate vars Start #
+    migrated-gitlab-backup-password = var.migrate_gitlab ? "" : var.migrate_gitlab_backup_password
+    gcs-path-to-backup              = var.migrate_gitlab ? "" : "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_migrate_backup.name}"
+    migrated-gitlab-version         = var.migrate_gitlab ? "" : var.migrate_gitlab_version
+    # Migrate vars End #
+    startup-script-url              = var.migrate_gitlab ? join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_migrate_script.name]) : join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_install_script.name])
+    instance-external-domain        = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
     instance-protocol               = var.gitlab_instance_protocol
-	  gitlab-initial-root-pwd-secret	= google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
+	gitlab-initial-root-pwd-secret	= google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
     gitlab-api-token-secret         = google_secret_manager_secret.gitlab_api_token.secret_id
     gitlab-cert-key-secret         	= google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
-    gitlab-cert-public-secret	      = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
+    gitlab-cert-public-secret	    = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
     gitlab-ci-runner-registration-token-secret = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
   }
 lifecycle {
