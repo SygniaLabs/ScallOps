@@ -16,13 +16,14 @@ runners:
       # The FF_USE_POWERSHELL_PATH_RESOLVER feature flag has to be enabled for PowerShell 
       # to resolve paths for Windows correctly when Runner is operating in a Linux environment
       # but targeting Windows nodes.
-      environment = ["FF_USE_POWERSHELL_PATH_RESOLVER=1", "FF_USE_LEGACY_KUBERNETES_EXECUTION_STRATEGY=true"]
+      environment = ["FF_USE_POWERSHELL_PATH_RESOLVER=1"]
 
       [runners.kubernetes.node_selector]
         "node_pool" = "windows-pool"
         "kubernetes.io/arch" = "amd64"
         "kubernetes.io/os" = "windows"
         "node.kubernetes.io/windows-build" = "10.0.17763"        
+
 
       [runners.kubernetes.node_tolerations]
         "node.kubernetes.io/os=windows" = "NoSchedule"

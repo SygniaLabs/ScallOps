@@ -44,7 +44,7 @@ resource "google_compute_instance" "gitlab" {
     startup-script-url              = var.migrate_gitlab ? join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_migrate_script[0].name]) : join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_install_script.name])
     instance-external-domain        = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
     instance-protocol               = var.gitlab_instance_protocol
-	gitlab-initial-root-pwd-secret	= google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
+    gitlab-initial-root-pwd-secret	= google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
     gitlab-api-token-secret         = google_secret_manager_secret.gitlab_api_token.secret_id
     gitlab-cert-key-secret         	= google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
     gitlab-cert-public-secret	    = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id

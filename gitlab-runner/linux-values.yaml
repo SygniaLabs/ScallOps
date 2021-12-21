@@ -13,6 +13,7 @@ runners:
       shell = "bash"
       [runners.kubernetes.node_selector]
         "node_pool" = "linux-pool"
+
       [runners.kubernetes]
         namespace = "default"
         poll_interval = 30
