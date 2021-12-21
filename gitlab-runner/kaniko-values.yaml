@@ -1,8 +1,3 @@
-# Gitlab Runner level hosts var
-hostAliases:
- - ip: "10.0.0.2"
-   hostnames:
-    - "gitlab.local"
 rbac:
  create: true
  rules:
@@ -25,9 +20,6 @@ runners:
         namespace = "sensitive"
         poll_interval = 30
         poll_timeout = 3600
-        [[runners.kubernetes.host_aliases]]
-          ip = "10.0.0.2"
-          hostnames = ["gitlab.local"]
         [[runners.kubernetes.volumes.secret]]
           name = "kaniko-secret"
           mount_path = "/secret"

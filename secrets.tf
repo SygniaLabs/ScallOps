@@ -89,6 +89,7 @@ resource "random_password" "gitlab_runner_registration_token" {
 resource "random_password" "gitlab_initial_root_pwd" {
   length           = 16
   special          = true
+  override_special = "-_"
 }
 
 resource "random_password" "gitlab_api_token" {

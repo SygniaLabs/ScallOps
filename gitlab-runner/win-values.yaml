@@ -1,10 +1,3 @@
-# Gitlab Runner level hosts var
-hostAliases:
- - ip: "10.0.0.2"
-   hostnames:
-    - "gitlab.local"
-locked: "false"
-logLevel: debug
 rbac:
  create: true
  rules:
@@ -19,7 +12,6 @@ runners:
       executor = "kubernetes"
       builds_dir = "C:\\GitLab-Runner\\builds"
       cache_dir = "C:\\GitLab-Runner\\cache"
-      shell  = "powershell"
       
       # The FF_USE_POWERSHELL_PATH_RESOLVER feature flag has to be enabled for PowerShell 
       # to resolve paths for Windows correctly when Runner is operating in a Linux environment
@@ -28,6 +20,10 @@ runners:
 
       [runners.kubernetes.node_selector]
         "node_pool" = "windows-pool"
+        "kubernetes.io/arch" = "amd64"
+        "kubernetes.io/os" = "windows"
+        "node.kubernetes.io/windows-build" = "10.0.17763"        
+
 
       [runners.kubernetes.node_tolerations]
         "node.kubernetes.io/os=windows" = "NoSchedule"
