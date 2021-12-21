@@ -19,6 +19,39 @@ variable "infra_name" {
     }
 }
 
+# Migration variables 
+variable "migrate_gitlab" {
+    type        = bool
+    description = "If performing migration from another Gitlab instance and got a backup file from previous instance"
+    default     = false
+}
+
+
+variable "migrate_gitlab_version" {
+    type        = string
+    description = "The Gitlab full version that you are migrating from e.g. '14.3.3-ee'"
+    default     = ""
+}
+
+variable "migrate_gitlab_backup_bucket" {
+    type        = string
+    description = "The Google Storage Bucket to your Gitlab backup e.g. 'mybucket1-abcd'"
+    default     = ""
+}
+
+variable "migrate_gitlab_backup_path" {
+    type        = string
+    description = "The path to the archived backup zip 'backups/gitlab-xxx-backup.zip'"
+    default     = ""
+}
+
+variable "migrate_gitlab_backup_password" {
+    type        = string
+    description = "The password value decrypting the archived backup zip"
+    default     = ""
+    sensitive   = true
+}
+
 
 # Gitlab instance related variables
 
