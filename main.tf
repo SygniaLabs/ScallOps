@@ -41,8 +41,7 @@ resource "google_compute_instance" "gitlab" {
                                                 "/",
                                                 google_storage_bucket_object.gitlab_install_script.name
                                                 ])
-    cicd-utils-bucket-name          = google_storage_bucket.deployment_utils.name
-    instance-internal-domain             = local.instance_internal_domain
+    instance-external-domain             = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
     instance-protocol               = var.gitlab_instance_protocol
 	  gitlab-initial-root-pwd-secret	= google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
     gitlab-api-token-secret         = google_secret_manager_secret.gitlab_api_token.secret_id
@@ -50,6 +49,12 @@ resource "google_compute_instance" "gitlab" {
     gitlab-cert-public-secret	      = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
     gitlab-ci-runner-registration-token-secret = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
   }
+lifecycle {
+    ignore_changes = [
+        metadata,
+    ]
+  }
+
 }
 
 

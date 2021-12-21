@@ -3,7 +3,6 @@ hostAliases:
  - ip: "10.0.0.2"
    hostnames:
     - "gitlab.local"
-locked: "true"
 rbac:
  create: true
  rules:
@@ -12,6 +11,7 @@ rbac:
   #  verbs: ["get", "list", "watch", "create", "patch", "delete", "update", "attach"]
 
 runners:
+  protected: true
   tags: "kaniko,kubernetes"
   config: |
     [[runners]]
@@ -19,7 +19,7 @@ runners:
       shell = "bash"
       
       [runners.kubernetes.node_selector]
-        "kubernetes.io/os" = "linux"
+        "node_pool" = "linux-pool"
 
       [runners.kubernetes]
         namespace = "sensitive"

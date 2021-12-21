@@ -64,7 +64,7 @@ resource "google_container_node_pool" "windows-pool" {
               effect = "NO_SCHEDULE"
               key    = "node.kubernetes.io/os"
               value  = "windows"
-            },
+            }
           ]
 
       shielded_instance_config {
