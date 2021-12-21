@@ -20,6 +20,7 @@ runners:
         namespace = "sensitive"
         poll_interval = 30
         poll_timeout = 3600
+
         [[runners.kubernetes.volumes.secret]]
           name = "kaniko-secret"
           mount_path = "/secret"

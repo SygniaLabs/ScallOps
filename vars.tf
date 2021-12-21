@@ -26,6 +26,7 @@ variable "migrate_gitlab" {
     default     = false
 }
 
+
 variable "migrate_gitlab_version" {
     type        = string
     description = "The Gitlab full version that you are migrating from e.g. '14.3.3-ee'"

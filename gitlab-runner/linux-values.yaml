@@ -17,4 +17,4 @@ runners:
       [runners.kubernetes]
         namespace = "default"
         poll_interval = 30
-        poll_timeout = 3600   
+        poll_timeout = 3600
