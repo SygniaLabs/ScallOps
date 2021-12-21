@@ -15,7 +15,7 @@ fi
 # Install Dependencies
 sudo apt-get update
 # sudo apt-get install -y curl openssh-server ca-certificates tzdata perl jq
-sudo apt-get install -y curl ca-certificates tzdata perl jq
+sudo apt-get install -y curl ca-certificates tzdata perl jq coreutils zip
 
 
 
@@ -23,7 +23,7 @@ sudo apt-get install -y curl ca-certificates tzdata perl jq
 ## Network variables
 INSTANCE_PROTOCOL=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/instance-protocol` #http/https
 echo "INFO: Protocol is $INSTANCE_PROTOCOL"
-INSTANCE_EXTERNAL_DOMAIN=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/instance-ext-domain`
+INSTANCE_EXTERNAL_DOMAIN=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/instance-external-domain`
 echo "INFO: domain name is $INSTANCE_EXTERNAL_DOMAIN"
 EXTERNAL_IP=`curl -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip`
 echo "INFO: external IP is $EXTERNAL_IP"
@@ -36,14 +36,16 @@ GITLAB_API_TOKEN=`gcloud secrets versions access latest --secret=$GITLAB_API_TOK
 GITLAB_RUNNER_REG_SECRET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-ci-runner-registration-token-secret`
 GITLAB_RUNNER_REG=`gcloud secrets versions access latest --secret=$GITLAB_RUNNER_REG_SECRET`
 
+
 ## Post installation required variables
 GCP_PROJECT_ID=`gcloud config list --format 'value(core.project)' 2>/dev/null`
-CI_CD_UTILS_BUKCET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/cicd-utils-bucket-name`
+GITLAB_READ_API=$(echo $RANDOM | md5sum | head -c 16)
 
 
 EXTERNAL_URL="$INSTANCE_PROTOCOL://$INSTANCE_EXTERNAL_DOMAIN"
 echo "INFO: external URL will be $EXTERNAL_URL"
 
+############### Gitlab Installation ##############
 
 # Install Postfix non-interactive
 echo "INFO: Starting postfix installation"
@@ -82,6 +84,7 @@ fi
 #Create personal token for the root account
 echo "INFO: Seeding personal token for root account"
 sudo gitlab-rails runner "token = User.find_by_username('root').personal_access_tokens.create(scopes: [:api], name: 'Gitlab post deployment script'); token.set_token('$GITLAB_API_TOKEN'); token.save!"
+sudo gitlab-rails runner "token = User.find_by_username('root').personal_access_tokens.create(scopes: [:read_api], name: 'Gitlab Fetch previous artifacts'); token.set_token('$GITLAB_READ_API'); token.save!"
 
 
 # TBD Create all actions below via gitlab-rails
@@ -91,8 +94,11 @@ sleep 120
 # Set instance level environment variables, so pipelines can utilize them
 echo "INFO: Setting instance level CI/CD variables"
 curl -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GCP_PROJECT_ID" --form "value=$GCP_PROJECT_ID"
-curl -o /dev/null -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GITLAB_API_ACCESS" --form "value=$GITLAB_API_TOKEN" --form "masked=true"
-curl -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=CI_CD_UTILS_BUKCET" --form "value=$CI_CD_UTILS_BUKCET"
+curl -o /dev/null -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GITLAB_READ_API" --form "value=$GITLAB_READ_API" --form "masked=true"
+
+#TBD Change to recipes project level
+curl -o /dev/null -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GITLAB_API_ACCESS" --form "value=$GITLAB_API_TOKEN" --form "masked=true" --form "protected=true"
+
 
 
 
@@ -147,3 +153,9 @@ then
 else
     echo "INFO: SCALLOPS-RECIPES Import failed or still in-progress, you can trigger the pipline manually."
 fi
+
+
+# Remove startup script reference (prevent from running on rebbot)
+name=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/name`
+zone=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/zone | cut -d'/' -f 4`
+gcloud compute instances remove-metadata "$name" --zone="$zone" --keys=startup-script-url
