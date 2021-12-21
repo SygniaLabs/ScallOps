@@ -37,11 +37,11 @@ resource "google_compute_instance" "gitlab" {
   metadata = {
     gcs-prefix                      = "gs://${google_storage_bucket.deployment_utils.name}"
     # Migrate vars Start #
-    migrated-gitlab-backup-password = var.migrate_gitlab ? "" : var.migrate_gitlab_backup_password
-    gcs-path-to-backup              = var.migrate_gitlab ? "" : "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_migrate_backup.name}"
-    migrated-gitlab-version         = var.migrate_gitlab ? "" : var.migrate_gitlab_version
+    migrated-gitlab-backup-password = var.migrate_gitlab ? var.migrate_gitlab_backup_password : ""
+    gcs-path-to-backup              = var.migrate_gitlab ? "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_migrate_backup[0].name}" : ""
+    migrated-gitlab-version         = var.migrate_gitlab ? var.migrate_gitlab_version : ""
     # Migrate vars End #
-    startup-script-url              = var.migrate_gitlab ? join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_migrate_script.name]) : join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_install_script.name])
+    startup-script-url              = var.migrate_gitlab ? join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_migrate_script[0].name]) : join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_install_script.name])
     instance-external-domain        = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
     instance-protocol               = var.gitlab_instance_protocol
 	gitlab-initial-root-pwd-secret	= google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
@@ -72,18 +72,18 @@ resource "helm_release" "gitlab-runner-linux" {
                 ]
   name       = "linux"
   # repository = "https://charts.gitlab.io/gitlab"
-  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.35.3.tgz"
+  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.33.1.tgz"
   
   values     = [
     file("${path.module}/gitlab-runner/linux-values.yaml")
     ]
-
+ 
   set {
     name  = "gitlabUrl"
     value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
-    name  = "cloneUrl"
+    name  = "runners.cloneUrl"
     value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
@@ -106,7 +106,7 @@ resource "helm_release" "gitlab-runner-kaniko" {
   name       = "kaniko"
   namespace  = "sensitive"
   # repository = "https://charts.gitlab.io/gitlab"
-  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.35.3.tgz"
+  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.33.1.tgz"
   
   values     = [
     file("${path.module}/gitlab-runner/kaniko-values.yaml")
@@ -117,7 +117,7 @@ resource "helm_release" "gitlab-runner-kaniko" {
     value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
-    name  = "cloneUrl"
+    name  = "runners.cloneUrl"
     value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
@@ -149,8 +149,8 @@ resource "helm_release" "gitlab-runner-win" {
     value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
-    name  = "cloneUrl"
-    value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+    name  = "runners.cloneUrl"
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
     name  = "certsSecretName"

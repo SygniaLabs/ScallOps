@@ -15,7 +15,7 @@ fi
 # Install Dependencies
 sudo apt-get update
 # sudo apt-get install -y curl openssh-server ca-certificates tzdata perl jq
-sudo apt-get install -y curl ca-certificates tzdata perl jq coreutils zip
+sudo apt-get install -y curl ca-certificates tzdata perl jq coreutils zip p7zip-full
 
 
 
@@ -74,7 +74,12 @@ then
     sudo gcloud secrets versions access latest --secret=$GITLAB_CERT_PUB_SECRET > /etc/gitlab/ssl/$INSTANCE_EXTERNAL_DOMAIN.crt
     sudo echo "letsencrypt['enable'] = false" >> /etc/gitlab/gitlab.rb
     sudo gitlab-ctl reconfigure
+    sudo gitlab-ctl restart
 fi
+
+
+# Short delay
+sleep 20
 
 
 ###############################################

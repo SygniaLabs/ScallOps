@@ -9,10 +9,10 @@ resource "google_container_node_pool" "windows-pool" {
   location            = "${var.region}-${var.zone}"
   max_pods_per_node   = 10
   name                = "windows-pool"
-  node_count          = 0
+  #node_count          = 0
   node_locations      = ["${var.region}-${var.zone}"]
   project             = var.project_id
-  version             = "1.21.6-gke.1500" #Make upgrades from here.
+  version             = "1.20.9-gke.1001" #Make upgrades from here.
   autoscaling {
       max_node_count = 8
       min_node_count = 0

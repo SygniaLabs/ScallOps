@@ -39,15 +39,23 @@ resource "google_storage_bucket_object" "gitlab_migrate_script" {
   source = "${path.module}/scripts/bash/gitlab_migrate.sh"
 }
 
-data "google_storage_bucket_object_content" "gitlab_backup" {
+
+# Downloading in this way since state file won't support big files in resource attributes.
+  resource "null_resource" "download_gitlab_backup" {
   count  = var.migrate_gitlab ? 1 : 0
-  name   = var.migrate_gitlab_backup_path
-  bucket = var.migrate_gitlab_backup_bucket
+  triggers = {
+    gcs_backup_path = "gs://${var.migrate_gitlab_backup_bucket}/${var.migrate_gitlab_backup_path}"
+  }
+  provisioner "local-exec" {
+    when    = create
+    command = "gsutil cp gs://${var.migrate_gitlab_backup_bucket}/${var.migrate_gitlab_backup_path} ${path.module}/${var.migrate_gitlab_backup_path}"
+  }
 }
 
 resource "google_storage_bucket_object" "gitlab_migrate_backup" {
+  depends_on = [null_resource.download_gitlab_backup]
   count  = var.migrate_gitlab ? 1 : 0  
   name   = var.migrate_gitlab_backup_path
   bucket = google_storage_bucket.deployment_utils.name
-  source = data.google_storage_bucket_object_content.gitlab_backup.content
+  source = "${path.module}/${var.migrate_gitlab_backup_path}"
 }
