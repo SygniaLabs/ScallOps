@@ -131,40 +131,6 @@ resource "helm_release" "gitlab-runner-kaniko" {
 }
 
 
-resource "helm_release" "gitlab-runner-kaniko" {
-  depends_on = [
-                module.gke,
-                module.gke_auth,
-                kubernetes_namespace.sensitive-namespace
-                ]
-  name       = "kaniko"
-  namespace  = "sensitive"
-  # repository = "https://charts.gitlab.io/gitlab"
-  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.35.3.tgz"
-  
-  values     = [
-    file("${path.module}/gitlab-runner/kaniko-values.yaml")
-    ]
-
-  set {
-    name  = "gitlabUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
-  }
-  set {
-    name  = "cloneUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
-  }
-  set {
-    name  = "certsSecretName"
-    value = "${local.instance_internal_domain}-cert"
-  }
-  set_sensitive {
-    name  = "runnerRegistrationToken"
-    value = random_password.gitlab_runner_registration_token.result
-  }
-}
-
-
 resource "helm_release" "gitlab-runner-win" {
   depends_on = [
                 module.gke,

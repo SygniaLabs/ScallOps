@@ -5,9 +5,9 @@ resource "google_container_node_pool" "windows-pool" {
                          helm_release.gitlab-runner-kaniko
                          ]
   cluster             = module.gke.cluster_id
-  initial_node_count  = 0
+  initial_node_count  = 1
   location            = "${var.region}-${var.zone}"
-  max_pods_per_node   = 10
+  max_pods_per_node   = 6
   name                = "windows-pool"
   #node_count          = 0
   node_locations      = ["${var.region}-${var.zone}"]
@@ -15,7 +15,7 @@ resource "google_container_node_pool" "windows-pool" {
   version             = "1.20.9-gke.1001" #Make upgrades from here.
   autoscaling {
       max_node_count = 8
-      min_node_count = 0
+      min_node_count = 1
     }
 
   management {
@@ -31,7 +31,6 @@ resource "google_container_node_pool" "windows-pool" {
       labels            = {
           "cluster_name" = module.gke.name
           "node_pool"    = "windows-pool"
-          "windows"      = "true"
         }
       local_ssd_count   = 0
       machine_type      = "n1-standard-2"

@@ -150,6 +150,7 @@ echo "INFO: Seeding root write api key"
 sudo gitlab-rails runner "token = User.find_by_username('root').personal_access_tokens.create(scopes: [:api], name: 'Gitlab post deployment script'); token.set_token('$GITLAB_API_TOKEN'); token.save!"
 
 # Seed shared runners registartion token
+echo "INFO: Runners registration token..."
 sudo gitlab-rails runner "appset = Gitlab::CurrentSettings.current_application_settings; appset.set_runners_registration_token('$GITLAB_RUNNER_REG'); appset.save!"
 
 
