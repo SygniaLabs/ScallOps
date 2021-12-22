@@ -7,7 +7,7 @@ resource "google_container_node_pool" "windows-pool" {
   cluster             = module.gke.cluster_id
   initial_node_count  = 1
   location            = "${var.region}-${var.zone}"
-  max_pods_per_node   = 6
+  max_pods_per_node   = 10
   name                = "windows-pool"
   #node_count          = 0
   node_locations      = ["${var.region}-${var.zone}"]
@@ -15,7 +15,7 @@ resource "google_container_node_pool" "windows-pool" {
   version             = "1.20.9-gke.1001" #Make upgrades from here.
   autoscaling {
       max_node_count = 8
-      min_node_count = 1
+      min_node_count = 1 # at least 1 required since Gitlab K8s runner for windows has issue with scaling-up from 0->1 nodes as node-pool label cant contain the windows build version
     }
 
   management {
