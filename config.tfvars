@@ -4,6 +4,7 @@
 project_id = ""
 # The name you wish to have as a prefix for the deployment's resources. Must comply with [a-z]([-a-z0-9]*[a-z0-9])
 infra_name = "scallops"
+backups_bucket_name = "" # The name of an existing bucket you wish to receive backups to. Terraform will create the required permission to upload the backup archive.
 
 #### Optional ####
 

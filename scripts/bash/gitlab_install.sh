@@ -167,3 +167,12 @@ fi
 name=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/name`
 zone=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/zone | cut -d'/' -f 4`
 gcloud compute instances remove-metadata "$name" --zone="$zone" --keys=startup-script-url
+
+
+# Download backup cron executor and cron job #Backup will occur every Saturday on 10:00 UTC
+DEPLOYMENT_GCS_PREFIX=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gcs-prefix`
+sudo gsutil cp $DEPLOYMENT_GCS_PREFIX/scripts/bash/gitlab_backup_exec.sh /gitlab_backup_exec.sh
+sudo chmod +x /gitlab_backup_exec.sh
+echo "0 10 * * 6 /gitlab_backup_exec.sh" > gitlab-backup-cron
+sudo crontab gitlab-backup-cron
+rm gitlab-backup-cron

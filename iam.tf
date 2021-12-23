@@ -17,6 +17,8 @@ resource "google_project_iam_binding" "sa_binding" {
 }
 
 # Gitlab instance IAM Binding to storage
+
+# Read startup scripts, deployment utils.
 resource "google_storage_bucket_iam_binding" "binding" {
   bucket  = google_storage_bucket.deployment_utils.name
   role    = "roles/storage.objectViewer"
@@ -24,6 +26,32 @@ resource "google_storage_bucket_iam_binding" "binding" {
     "serviceAccount:${google_service_account.gitlab_service_account.email}"
   ]
 }
+
+
+# Create role with permissions to backup only without read/overwrite/delete
+resource "google_project_iam_custom_role" "backup_archive_role" {
+  role_id     = "gitlab_backupArchive_${var.infra_name}"
+  title       = "Gitlab Backup Role"
+  description = "A role attached to the gitlab compute service account allowing it to update new backup archives to the specified bucket (var.backups_bucket_name)."
+  permissions = [
+                "storage.objects.list",
+                "storage.objects.create",
+                "storage.multipartUploads.create",
+                "storage.multipartUploads.listParts",
+                "storage.multipartUploads.abort"
+                ]
+  provider    = google.offensive-pipeline
+}
+
+# Attach gitlab compute service account to the bucket with the backup role
+resource "google_storage_bucket_iam_binding" "backup_bucket_binding" {
+  bucket  = var.backups_bucket_name
+  role    = google_project_iam_custom_role.backup_archive_role.name
+  members = [
+    "serviceAccount:${google_service_account.gitlab_service_account.email}"
+  ]
+}
+
 
 # To allow startup script remove itself from metadata
 resource "google_project_iam_custom_role" "compute_metadata_role" {
@@ -103,6 +131,15 @@ resource "google_secret_manager_secret_iam_binding" "gitlab_initial_root_pwd" {
 resource "google_secret_manager_secret_iam_binding" "gitlab_api_token" {
   project    = google_secret_manager_secret.gitlab_api_token.project
   secret_id  = google_secret_manager_secret.gitlab_api_token.secret_id
+  role       = "roles/secretmanager.secretAccessor"
+  members    = [
+    "serviceAccount:${google_service_account.gitlab_service_account.email}",
+  ]
+}
+
+resource "google_secret_manager_secret_iam_binding" "gitlab_backup_key" {
+  project    = google_secret_manager_secret.gitlab_backup_key.project
+  secret_id  = google_secret_manager_secret.gitlab_backup_key.secret_id
   role       = "roles/secretmanager.secretAccessor"
   members    = [
     "serviceAccount:${google_service_account.gitlab_service_account.email}",

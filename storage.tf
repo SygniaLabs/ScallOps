@@ -29,6 +29,19 @@ resource "google_storage_bucket_object" "gitlab_install_script" {
   source = "${path.module}/scripts/bash/gitlab_install.sh"
 }
 
+# Customized Gitlab backup script
+
+resource "google_storage_bucket_object" "gitlab_backup_script" {
+  name   = "scripts/bash/gitlab_backup.sh"
+  bucket = google_storage_bucket.deployment_utils.name
+  source = "${path.module}/scripts/bash/gitlab_backup.sh"
+}
+
+resource "google_storage_bucket_object" "gitlab_backup_script_exec" {
+  name   = "scripts/bash/gitlab_backup_exec.sh"
+  bucket = google_storage_bucket.deployment_utils.name
+  source = "${path.module}/scripts/bash/gitlab_backup_exec.sh"
+}
 
 # Migration resource
 

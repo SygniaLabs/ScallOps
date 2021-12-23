@@ -98,6 +98,11 @@ resource "random_password" "gitlab_api_token" {
   override_special = "-_"
 }
 
+resource "random_password" "gitlab_backup_key" {
+  length           = 24
+  special          = true
+  override_special = "-_"
+}
 
 # Gitlab runner registration token
 
@@ -167,4 +172,28 @@ resource "google_secret_manager_secret" "gitlab_api_token" {
 resource "google_secret_manager_secret_version" "gitlab_api_token" {
   secret      = google_secret_manager_secret.gitlab_api_token.id
   secret_data = random_password.gitlab_api_token.result
+}
+
+
+# Gitlab backup archives password
+
+resource "google_secret_manager_secret" "gitlab_backup_key" {
+  project    = var.project_id
+  secret_id  = "${var.infra_name}-gitlab-backup-key"
+  labels     = {
+          label = "gitlab"
+  }
+  replication {
+    user_managed {
+          replicas {
+            location = var.region
+      }
+    }
+  }
+}
+
+
+resource "google_secret_manager_secret_version" "gitlab_backup_key" {
+  secret      = google_secret_manager_secret.gitlab_backup_key.id
+  secret_data = random_password.gitlab_backup_key.result
 }
