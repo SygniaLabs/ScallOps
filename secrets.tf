@@ -35,7 +35,7 @@ resource "tls_self_signed_cert" "gitlab-self-signed-cert" {
 # Gitlab server certificate
 
 resource "google_secret_manager_secret" "gitlab-self-signed-cert-key" {
-  project    = var.project_id
+  provider   = google.offensive-pipeline
   secret_id  = "${var.infra_name}-gitlab-cert-key"
   labels     = {
         label = "gitlab-cert"
@@ -57,7 +57,7 @@ resource "google_secret_manager_secret_version" "gitlab-self-signed-cert-key-ver
 
 
 resource "google_secret_manager_secret" "gitlab-self-signed-cert-crt" {
-  project    = var.project_id
+  provider   = google.offensive-pipeline
   secret_id  = "${var.infra_name}-gitlab-cert-crt"
   labels     = {
           label = "gitlab-cert"
@@ -107,7 +107,7 @@ resource "random_password" "gitlab_backup_key" {
 # Gitlab runner registration token
 
 resource "google_secret_manager_secret" "gitlab_runner_registration_token" {
-  project    = var.project_id
+  provider   = google.offensive-pipeline
   secret_id  = "${var.infra_name}-gitlab-runner-reg"
   labels     = {
           label = "gitlab"
@@ -130,7 +130,7 @@ resource "google_secret_manager_secret_version" "gitlab_runner_registration_toke
 
 # Gitlab initial root password
 resource "google_secret_manager_secret" "gitlab_initial_root_pwd" {
-  project    = var.project_id
+  provider   = google.offensive-pipeline
   secret_id  = "${var.infra_name}-gitlab-root-password"
   labels     = {
           label = "gitlab"
@@ -154,7 +154,7 @@ resource "google_secret_manager_secret_version" "gitlab_initial_root_pwd" {
 # Gitlab root account personal access token (API)
 
 resource "google_secret_manager_secret" "gitlab_api_token" {
-  project    = var.project_id
+  provider   = google.offensive-pipeline
   secret_id  = "${var.infra_name}-gitlab-api-token"
   labels     = {
           label = "gitlab"
@@ -178,7 +178,7 @@ resource "google_secret_manager_secret_version" "gitlab_api_token" {
 # Gitlab backup archives password
 
 resource "google_secret_manager_secret" "gitlab_backup_key" {
-  project    = var.project_id
+  provider   = google.offensive-pipeline
   secret_id  = "${var.infra_name}-gitlab-backup-key"
   labels     = {
           label = "gitlab"

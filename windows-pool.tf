@@ -11,7 +11,7 @@ resource "google_container_node_pool" "windows-pool" {
   name                = "windows-pool"
   #node_count          = 0
   node_locations      = ["${var.region}-${var.zone}"]
-  project             = var.project_id
+  provider            = google.offensive-pipeline
   version             = "1.20.9-gke.1001" #Make upgrades from here.
   autoscaling {
       max_node_count = 8
