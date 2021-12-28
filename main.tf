@@ -49,6 +49,8 @@ resource "google_compute_instance" "gitlab" {
     gitlab-cert-key-secret         	= google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
     gitlab-cert-public-secret	    = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
     gitlab-ci-runner-registration-token-secret = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
+    gitlab-backup-key-secret        = google_secret_manager_secret.gitlab_backup_key.secret_id
+    gitlab-backup-bucket-name       = var.backups_bucket_name
   }
 lifecycle {
     ignore_changes = [

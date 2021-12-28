@@ -19,6 +19,12 @@ variable "infra_name" {
     }
 }
 
+# Backup variables
+variable "backups_bucket_name" {
+    type        = string
+    description = "The name of the bucket backups are stored. Bucket must exist before apply. Terrafrom will add objectCreator permission to the gitlab svc account."
+}
+
 # Migration variables 
 variable "migrate_gitlab" {
     type        = bool
