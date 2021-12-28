@@ -4,7 +4,7 @@
 resource "google_service_account" "gitlab_service_account" {
   account_id   = "${var.infra_name}-gitlab-svc"
   display_name = "Gitlab Service Account"
-  project      = var.project_id
+  provider     = google.offensive-pipeline
 }
 
 resource "google_project_iam_binding" "sa_binding" {
@@ -75,13 +75,13 @@ resource "google_project_iam_binding" "compute_binding" {
 resource "google_service_account" "gke_bucket_service_account" {
   account_id   = "${var.infra_name}-gke-buckt"
   display_name = "GKE Service Account for Pods to access buckets, push and pull containers"
-  project      = var.project_id
+  provider     = google.offensive-pipeline
 }
 
 resource "google_project_iam_member" "storage_admin_role" {
-  role    = "roles/storage.admin"
-  member  = "serviceAccount:${google_service_account.gke_bucket_service_account.email}"
-  project = var.project_id
+  role      = "roles/storage.admin"
+  member    = "serviceAccount:${google_service_account.gke_bucket_service_account.email}"
+  provider  = google.offensive-pipeline
 }
 
 resource "google_service_account_key" "storage_admin_role" {
