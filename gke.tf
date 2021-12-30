@@ -211,3 +211,38 @@ resource "google_container_node_pool" "windows-pool" {
     max_unavailable = 0
     }
 }
+
+resource "kubernetes_pod_disruption_budget" "kube-dns" {
+  depends_on  = [module.gke]
+  metadata {
+    name      = "k8s-pdb-kube-dns"
+    namespace = "kube-system"
+  }
+  spec {
+    max_unavailable = 1
+    selector {
+      match_labels = {
+        k8s-app = "kube-dns"
+      }
+    }
+  }
+}
+
+
+resource "kubernetes_pod_disruption_budget" "konnectivity-agent" {
+  depends_on  = [module.gke]
+  metadata {
+    name      = "k8s-pdb-konnectivity-agent"
+    namespace = "kube-system"
+  }
+  spec {
+    max_unavailable = "50%"
+    selector {
+      match_labels = {
+        k8s-app = "konnectivity-agent"
+      }
+    }
+  }
+}
+
+
