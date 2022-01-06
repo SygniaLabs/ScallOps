@@ -132,6 +132,43 @@ resource "helm_release" "gitlab-runner-kaniko" {
   }
 }
 
+resource "helm_release" "gitlab-runner-dockerhub" {
+  count  = var.dockerhub-creds-secret != "" ? 1 : 0  
+  depends_on = [
+                module.gke,
+                module.gke_auth,
+                kubernetes_namespace.sensitive-namespace
+                ]
+  name       = "dockerhub-privates"
+  namespace  = "sensitive"
+  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.33.1.tgz"
+  
+  values     = [
+    file("${path.module}/gitlab-runner/dockerhub-values.yaml")
+    ]
+
+  set {
+    name  = "gitlabUrl"
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+  }
+  set {
+    name  = "runners.cloneUrl"
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+  }
+  set {
+    name  = "certsSecretName"
+    value = "${local.instance_internal_domain}-cert"
+  }
+  set {
+    name  = "runners.imagePullSecrets[0]"
+    value = kubernetes_secret.dockerhub-creds-config[0].metadata[0].name
+  }
+  set_sensitive {
+    name  = "runnerRegistrationToken"
+    value = random_password.gitlab_runner_registration_token.result
+  }
+}
+
 
 resource "helm_release" "gitlab-runner-win" {
   depends_on = [
