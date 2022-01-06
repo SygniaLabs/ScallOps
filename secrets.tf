@@ -197,3 +197,12 @@ resource "google_secret_manager_secret_version" "gitlab_backup_key" {
   secret      = google_secret_manager_secret.gitlab_backup_key.id
   secret_data = random_password.gitlab_backup_key.result
 }
+
+
+# Docker hub credentials secret
+
+data "google_secret_manager_secret_version" "dockerhub-secret" {
+  provider  = google.offensive-pipeline
+  count     = var.dockerhub-creds-secret != "" ? 1 : 0
+  secret    = var.dockerhub-creds-secret
+}

@@ -45,6 +45,26 @@ resource "kubernetes_secret" "k8s_gitlab_cert_secret-sensitive" {
   }
 }
 
+resource "kubernetes_secret" "dockerhub-creds-config" {
+  depends_on  = [module.gke_auth, module.gke, kubernetes_namespace.sensitive-namespace]
+  count       = var.dockerhub-creds-secret != "" ? 1 : 0  
+  data        = {
+    ".dockerconfigjson" =  jsonencode({
+                auths = {
+                        "https://index.docker.io/v1/" = {
+                            auth = "${base64encode("${data.google_secret_manager_secret_version.dockerhub-secret[0].secret_data}")}"
+                    }
+                }
+    })
+  }
+  type        = "kubernetes.io/dockerconfigjson"
+  metadata {
+    name      = "dockerhub-creds-jsonconfig"
+    namespace = "sensitive"
+  }
+}
+
+
 ## K8s auth
 
 module "gke_auth" {

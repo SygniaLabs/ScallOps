@@ -147,3 +147,8 @@ variable "dns_record_ttl" {
   default     = 300
 }
 
+variable "dockerhub-creds-secret" {
+  description = "An existing secret name in the same GCP project storing the Dockerhub credentials (username:password)"
+  type        = string
+  default     = ""
+}
