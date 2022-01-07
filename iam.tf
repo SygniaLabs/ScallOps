@@ -132,14 +132,6 @@ resource "google_secret_manager_secret_iam_binding" "gitlab_initial_root_pwd" {
   ]
 }
 
-resource "google_secret_manager_secret_iam_binding" "gitlab_api_token" {
-  project    = google_secret_manager_secret.gitlab_api_token.project
-  secret_id  = google_secret_manager_secret.gitlab_api_token.secret_id
-  role       = "roles/secretmanager.secretAccessor"
-  members    = [
-    "serviceAccount:${google_service_account.gitlab_service_account.email}",
-  ]
-}
 
 resource "google_secret_manager_secret_iam_binding" "gitlab_backup_key" {
   project    = google_secret_manager_secret.gitlab_backup_key.project

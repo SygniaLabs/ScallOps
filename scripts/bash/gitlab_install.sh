@@ -30,19 +30,20 @@ INSTANCE_EXTERNAL_DOMAIN=`curl -H "Metadata-Flavor: Google" http://169.254.169.2
 echo "INFO: domain name is $INSTANCE_EXTERNAL_DOMAIN"
 EXTERNAL_IP=`curl -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip`
 echo "INFO: external IP is $EXTERNAL_IP"
+GITLAB_INSTALL_VERSION="14.5.2-ee"
 
 ## Secrets variables
 GITLAB_INITIAL_ROOT_PASSWORD_SECRET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-initial-root-pwd-secret`
 GITLAB_INITIAL_ROOT_PASSWORD=`gcloud secrets versions access latest --secret=$GITLAB_INITIAL_ROOT_PASSWORD_SECRET`
-GITLAB_API_TOKEN_SECRET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-api-token-secret`
-GITLAB_API_TOKEN=`gcloud secrets versions access latest --secret=$GITLAB_API_TOKEN_SECRET`
 GITLAB_RUNNER_REG_SECRET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-ci-runner-registration-token-secret`
 GITLAB_RUNNER_REG=`gcloud secrets versions access latest --secret=$GITLAB_RUNNER_REG_SECRET`
 
 
 ## Post installation required variables
 GCP_PROJECT_ID=`gcloud config list --format 'value(core.project)' 2>/dev/null`
-GITLAB_READ_API=$(echo $RANDOM | md5sum | head -c 16)
+INSTANCE_INTERNAL_HOSTNAME=`curl -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/hostname"`
+INSTANCE_INTERNAL_URL=$INSTANCE_PROTOCOL://$INSTANCE_INTERNAL_HOSTNAME
+INSTANCE_INTERNAL_API_V4_URL=$INSTANCE_PROTOCOL://$INSTANCE_INTERNAL_HOSTNAME/api/v4
 
 
 EXTERNAL_URL="$INSTANCE_PROTOCOL://$INSTANCE_EXTERNAL_DOMAIN"
@@ -60,10 +61,10 @@ sudo apt-get install --assume-yes postfix
 # Install Gitlab Server
 echo "INFO: Downloading and Installing Gitlab from bash script"
 curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.deb.sh | sudo bash
-sudo GITLAB_ROOT_PASSWORD=$GITLAB_INITIAL_ROOT_PASSWORD GITLAB_SHARED_RUNNERS_REGISTRATION_TOKEN=$GITLAB_RUNNER_REG EXTERNAL_URL=$EXTERNAL_URL apt-get install gitlab-ee
 #Specific version installation:
-#wget --content-disposition https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_13.10.0-ee.0_amd64.deb/download.deb
-#sudo GITLAB_ROOT_PASSWORD=$GITLAB_INITIAL_ROOT_PASSWORD GITLAB_SHARED_RUNNERS_REGISTRATION_TOKEN=$GITLAB_RUNNER_REG EXTERNAL_URL=$EXTERNAL_URL dpkg -i gitlab-ee_13.10.0-ee.0_amd64.deb
+echo "Downloading: gitlab-ee_$GITLAB_INSTALL_VERSION.0_amd64.deb/download.deb"
+wget --content-disposition https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$GITLAB_INSTALL_VERSION.0_amd64.deb/download.deb
+sudo GITLAB_ROOT_PASSWORD=$GITLAB_INITIAL_ROOT_PASSWORD GITLAB_SHARED_RUNNERS_REGISTRATION_TOKEN=$GITLAB_RUNNER_REG EXTERNAL_URL=$EXTERNAL_URL dpkg -i gitlab-ee_$GITLAB_INSTALL_VERSION.0_amd64.deb
 
 
 if [[ $INSTANCE_PROTOCOL == "https" ]]
@@ -88,79 +89,26 @@ sleep 20
 ###############################################
 
 ####### Post Gitlab Installtion #######
-
-#Create personal token for the root account
-echo "INFO: Seeding personal token for root account"
-sudo gitlab-rails runner "token = User.find_by_username('root').personal_access_tokens.create(scopes: [:api], name: 'Gitlab post deployment script'); token.set_token('$GITLAB_API_TOKEN'); token.save!"
-sudo gitlab-rails runner "token = User.find_by_username('root').personal_access_tokens.create(scopes: [:read_api], name: 'Gitlab Fetch previous artifacts'); token.set_token('$GITLAB_READ_API'); token.save!"
-
-
-# TBD Create all actions below via gitlab-rails
-# Short delay #TBD CHECK API SERVICE STATUS
-sleep 120
-
 # Set instance level environment variables, so pipelines can utilize them
 echo "INFO: Setting instance level CI/CD variables"
-curl -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GCP_PROJECT_ID" --form "value=$GCP_PROJECT_ID"
-curl -o /dev/null -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GITLAB_READ_API" --form "value=$GITLAB_READ_API" --form "masked=true"
+# New instance level variables
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_HOST', value: '$INSTANCE_INTERNAL_HOSTNAME').save"
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_URL', value: '$INSTANCE_INTERNAL_URL').save"
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_API_V4_URL', value: '$INSTANCE_INTERNAL_API_V4_URL').save"
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'GCP_PROJECT_ID', value: '$GCP_PROJECT_ID').save"
 
-#TBD Change to recipes project level
-curl -o /dev/null -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GITLAB_API_ACCESS" --form "value=$GITLAB_API_TOKEN" --form "masked=true" --form "protected=true"
 
-
+# Create repo groups (ci, community)
+echo "INFO: Creating repositories groups"
+sudo gitlab-rails runner "Group.new(name: 'CI CD Tools', path: 'ci', visibility_level: 10).save"
+sudo gitlab-rails runner "Group.new(name: 'Community Tools', path: 'community', visibility_level: 10).save"
 
 
 # Import SCALLOPS-RECIPES project repo
-echo "INFO: Importing SCALLOPS-RECIPES repository"
-IMPORT_RESPONSE=`curl --location --insecure --request POST 'https://localhost/api/v4/projects' \
---header 'Content-Type: application/json' \
---header "PRIVATE-TOKEN: $GITLAB_API_TOKEN" \
---data-raw '{
-    "import_url": "https://github.com/SygniaLabs/ScallOps-Recipes.git",
-    "import_url_user": "",
-    "import_url_password": "",
-    "ci_cd_only": false,
-    "name": "ScallOps-Recipes",
-    "namespace_id": 1,
-    "path": "scallops-recipes",
-    "description": "",
-    "visibility": "internal"
-}'`
-IMPORTED_PROJECT_ID=`echo $IMPORT_RESPONSE | jq .id`
+echo "INFO: Importing SCALLOPS-RECIPES repository into CI group"
+sudo gitlab-rails runner "cigrp = Group.find_by_path_or_name('ci'); rootuser = User.find_by_id(1); Project.new(import_url: 'https://github.com/SygniaLabs/ScallOps-Recipes.git', name: 'Scallops Recipes', path: 'scallops-recipes', visibility_level: 10, creator: rootuser, namespace: cigrp).save"
+sudo gitlab-rails runner "newprj = Project.find_by_full_path('ci/scallops-recipes'); Gitlab::GithubImport::Importer::RepositoryImporter.new(newprj, :octokit).execute" # Ignore the following error (undefined method `repository' for :octokit:Symbol)
 
-
-
-# Short import delay 
-sleep 20
-
-
-
-# Trigger Deployment Initialization pipeline
-
-echo "INFO: Checking import status..."
-IMPORT_STATUS_RESPONSE=`curl --location --insecure --request GET "https://localhost/api/v4/projects/$IMPORTED_PROJECT_ID/import" --header "Content-Type: application/json" --header "PRIVATE-TOKEN: $GITLAB_API_TOKEN"`
-IMPORT_STATUS=`echo $IMPORT_STATUS_RESPONSE | jq -r .import_status`
-
-
-if [[ $IMPORT_STATUS == "finished" ]]
-then
-    echo "INFO: Import finished, triggering deployment initialization..."
-    echo "INFO: Creating pipeline trigger token..."
-    TRIGGER_TOKEN_RESPONSE=`curl --location --insecure --request POST --header "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/projects/$IMPORTED_PROJECT_ID/triggers?description=deploy-init"`
-    TRIGGER_TOKEN=`echo $TRIGGER_TOKEN_RESPONSE | jq -r .token`
-    # Short delay 
-    sleep 5
-    echo "INFO: Triggering SCALLOPS-RECIPES deployment initialization pipeline"
-    curl --location --insecure -g --request POST "https://localhost/api/v4/projects/$IMPORTED_PROJECT_ID/trigger/pipeline?variables[DEPLOYMENT_INIT]=true&ref=master&token=$TRIGGER_TOKEN"
-
-    # Delete trigger token
-    # Short delay 
-    sleep 5
-    echo "INFO: Removing project's trigger token"
-    curl --request DELETE --insecure --header "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/projects/$IMPORTED_PROJECT_ID/triggers/1"
-else
-    echo "INFO: SCALLOPS-RECIPES Import failed or still in-progress, you can trigger the pipline manually."
-fi
 
 
 # Remove startup script reference (prevent from running on rebbot)
