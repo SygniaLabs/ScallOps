@@ -1,6 +1,8 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![Terraform](https://img.shields.io/badge/Terraform-v0.14-8040c9.svg?style=plastic)
-![ScallOps](https://img.shields.io/badge/ScallOps-v0.1-000000.svg?style=plastic)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=plastic)](https://opensource.org/licenses/MIT)
+![Terraform](https://img.shields.io/badge/Terraform-v1.0.11-8040c9.svg?style=plastic)
+![Gitlab](https://img.shields.io/badge/Gitlab-v14.5.2-fd7e14.svg?style=plastic)
+![GKE](https://img.shields.io/badge/GKE-1.21.6-1A73E8.svg?style=plastic)
+![ScallOps](https://img.shields.io/badge/ScallOps-v0.3-000000.svg?style=plastic)
 
 # SCALLOPS
 
@@ -22,20 +24,88 @@ Refer to the [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) 
 
 The framework can be deployed to GCP using the provided Terraform scripts.
 It is maninly built from a Gitlab instance that provides the CI features and a Kubernetes cluster that execute CI jobs on the relevant operating systems.
-We are also using the Cloud Storage to store customized container images that we may use during operating the framework.
+There is also a use of Cloud Container Registry to store customized container images that we may use during operating the framework.
+Google Cloud Storage is in use to store maintenance scripts and encrypted Gitlab backups.
 
 Pre-requisites:
 * Google Cloud subscription with **OWNER** permissions on a project (It is reccomended to use a clean GCP project)
-* Access to GCP cloud shell or at least Terraform 14
+* Access to GCP cloud shell or local Terraform with access to your GCP
 * Web Browser
 
-After authneticating with your GCloud:
+
+Clone the repository
 ```bash
 git clone https://github.com/SygniaLabs/ScallOps.git
-cd ScallOps
+nano ScallOps/config.tfvars
+```
 
-***Edit config.tfvars according to your needs***
+Carefully read the instructions related to each variable and act accordingly.
 
+**project_id**, **infra_name** and **backups_bucket_name** variables are required.
+
+The code below is an example for *config.tfvars* file using all available optional variables:
+```bash
+#### Required ####
+
+project_id = "my-offensive-cicd"              # GCP Project ID
+infra_name = "scallops"                       # The name you wish to have as a prefix for the deployment's resources. Must comply with [a-z]([-a-z0-9]*[a-z0-9])
+backups_bucket_name = "mycicd-gitlab-backups" # The name of an existing bucket you wish to receive backups to. Terraform will create the required permission to upload the backup archive.
+
+
+#### Optionals ####
+operator_ips = ["1.2.3.4", "22.23.11.12"]     # Office IP / home IPs
+
+
+## External DNS ##
+# Uncomment below 3 lines if wishing to supply external DNS name for accessing Gitalb instance
+
+external_hostname = "scallops.mydomain.com"   # Requires re-deploy of the Gitlab instance to be set as external url from Gitlab's perspective. Will also update Certificate ALT names
+dns_project_id = "dns-mgt-company"            # The project ID where the managed DNS zone is located
+dns_managed_zone_name = "mydomain-com"        # The configured managed DNS zone name
+
+
+## Docker hub credentials ##
+# An existing secret name storing Dockerhub credentials to fetch private container images (format is username:password or username:access-token).
+# Creating Dockerhub access token https://docs.docker.com/docker-hub/access-tokens/
+# Creating a secret through GCP secret manager https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#create
+
+dockerhub-creds-secret = "dockerhub-private-credentials"     # Name of the secret in secret-manager
+
+
+
+## Default deployment values ##
+# Uncommenct and modify only if needed (us-central-1 considered to be the cheapest).
+
+# gitlab_instance_protocol = "https"  # The Gitlab instance Web server protocol, http or https.
+# zone = "a"                          # Zone for the k8s cluster, Gitlab instance and network.
+# region = us-central-1               # Region for the k8s cluster, Gitlab instance and network.
+
+
+
+
+## Migration variables ##
+# If you plan on migrating from a different gitlab instance, uncomment all migration variables below, and follow requirements.
+# Requires Gsutil on the terraform deployer system as backup will be downloaded locally
+
+migrate_gitlab = true                            ## If performing migration from another Gitlab instance and got a backup file from previous instance. true/false.
+migrate_gitlab_version = "14.5.2-ee"             ## The Gitlab full version that you are migrating from e.g. '14.3.3-ee'
+migrate_gitlab_backup_bucket = "mycicd-gitlab-backups"              ## The Google Storage Bucket to your Gitlab backup e.g. 'mybucket1-abcd'
+migrate_gitlab_backup_path = "backups/gitlab-16451235-backup.zip"   ## The path to the archived backup zip e.g 'backups/gitlab-xxx-backup.zip'
+migrate_gitlab_backup_password = "SecretBackupPassword"             ## The password value decrypting the archived backup zip
+
+## ### ### ### ####
+```
+
+
+If using locally, make sure that you are authenticated to your GCP
+```bash
+gcloud auth list    # List and check currently authenticated account
+gcloud auth login   # Authneticate
+```
+
+
+Deploy using terraform while pointing to the created configuration file
+```bash
 terraform init
 terraform apply --var-file=./config.tfvars
 ```
@@ -58,8 +128,8 @@ gitlab_ext_ip = "1.2.3.4"
 gitlab_root_password_secret = "<INFRA_NAME>-gitlab-root-password"
 ```
 
-[ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository should be pre-imported into the Gitlab insatnce together with all the relevant variables configured. All you have left to do is [designing](https://github.com/SygniaLabs/ScallOps-Recipes#designing-recipes) your recipes :)
-If you don't see the Recipes, you can import it [manually](https://docs.gitlab.com/ee/user/project/import/repo_by_url.html).
+[ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository should be pre-imported into the Gitlab insatnce together with few instance level CI/CD variables configured. All you have left to do is [designing](https://github.com/SygniaLabs/ScallOps-Recipes#designing-recipes) your recipes :)
+If you don't see the Recipes repository, you can import it [manually](https://docs.gitlab.com/ee/user/project/import/repo_by_url.html).
 
 
 ## Architecture
@@ -71,68 +141,49 @@ GCP resources include:
 - Google Kubernetes Engine (GKE) - K8s cluster to host our CI/CD jobs
   - Linux node pool - For the Gitlab-runners pods, and linux related jobs
   - Windows node pool - For Windows related jobs
-- CICD utilities bucket
-- Gitlab deploy utilities bucket
-- 2 Service Accounts
-  1. Used by Gitlab Compute instance
-  2. Used to push containers to Google Container Registry (GCR)
-- VPC network and related firewall rules
-- GCR (automatically created on first container push)
+  - Gitlab-runner Helm packages
+- Google Cloud Storage (GCS) - To store maintenance scripts
+- Google Container Registry (GCR) - To store cutomized container images
+- Service Accounts
+  1. Used by Gitlab Compute instance to pull maintenance scripts and store backup
+  2. User who is attached to the GKE cluster nodes to pull container images from the project's registry (Read only)
+  3. User who is attached to the Kaniko CI job runner allowing to push customized container images to GCR (User has Storage Admin over the default GCR bucket - "artifacts.\<project-id\>.appspot.com" )
+- VPC network and related firewall rules to allow operation
 
 <p align="center">
   <img src="./img/scallops-infra.png" alt="Infrastructure-layout" width="1494">
 </p>
 
 
+
 ## GCP Cloud Costs
 
 Idle:
-* Gitlab Instance: 51.46$ / month
-* Linux node: 24.46$ / month
+* Gitlab Instance: 51.46$ / month (n1-standard-2)
+* Linux node: 36.11$ / month (e2-highcpu-2)
+* Windows node: 115.70$ / month (e2-highcpu-2)
 * Storage (depends on images volume): 100GB - 2$ / month
 * Secret manager: 0.06$ /month
 * GKE: One Zonal cluster is free per billing account
-* **Total: 78$ (us-central-1)** -- [source](https://cloud.google.com/products/calculator/#id=8cb8ce23-5ff1-4e7a-a3b4-da2df464bfff)
+* **Total: 205$ (us-central-1)** -- [source](https://cloud.google.com/products/calculator/#id=cecbcc81-09b2-4bf6-b4a1-b9019d5b6d23)
 
 Per Job:
 * Linux: Same as idle since system already up. When scaled 0.09$ per hour for each running node.
-* Windows: ~0.12$ on the first job (30 mins), and additional 0.006 for an average build job (2 mins).
+* Windows: Additional 0.006 for an average build (C# compilation) job (2 mins).
 
-*Note that jobs which are executed simultaneously, can use the same node resources, resulting them in using the same credit. 
+*Note that Jobs pricing can decrease depending on a simultaneous usage.
 
 
 ## Open issues
-- Currently, Gitlab runner [does not support](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4014) running jobs on Windows K8s cluster nodes. 
-  However you can still work with windows containers through the workaround below:
-  - Any Windows related container that you are executing your job on, must include Powershell Core (Pwsh has to be avaialble for command line)
-  - To fetch previous jobs artifacts and upload outputs to the job artifact, you may utilize the API token from env variables (or create your own) together with gitlab-runner-helper.exe binary that is stored in the cicd-utils bucket.
-You may find examples to workaround this issue within the ScallOps-Recipes repository as well.
-
-- Deployment does not support the use of your own purchased domain, it currently utilizes a self-signed certificate. Don't try to change the domain on the Gitlab server, as it may break the certificate trust by the runners. This issue will be solved soon.
-
 - Windows related containers are **not** built and deployed automatically to your Container Registry. For now, you will have to do it manually. You can use the supplied [Windows Dockerfiles](https://github.com/SygniaLabs/ScallOps-Recipes/tree/main/_ci-maintain/dockerfiles/windows).
 
 
 ## Security Considerations
+* By default a single GCP IAM service account API key can be obtained by users with access to utilize the Kaniko-runner. This runner is attached with K8s secret that has admin access to the project's GCR bucket ("artifacts.\<project-id\>.appspot.com"). 
 
-To make the deployment and usage of this framework as smooth as possible, the following configurations were made:
-
-1. A Gitlab's instance level CI/CD variable that holds the API key of the root account. This means that any user who will be onboarded to the Gitlab, will be able to design and trigger CI pipeline, extract this API key and further use it.
-
-2. See [Container-Builder](https://github.com/SygniaLabs/ScallOps-Recipes/tree/main/_ci-maintain/dockerfiles) for GCP storage related security consideration.
-
-**The bottom line:** any registered user on your Gitlab instance will have complete access to your Project's Cloud Storage and Gitlab API.
-
-Keep in mind that having the API token available to any repository's CI settings enables you to:
-- Operate with the open [issue](https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4014) workaround when you require to fetch artifacts from previous jobs or upload them to the current job artifact.
-- Utilize the automatic external repository importer from the [**.tools-index.json**](https://github.com/SygniaLabs/ScallOps-Recipes/tree/main/ci-tools-controllers/.tools-index.json) file.
-
-
-Don't like these risks? You can waive the Tools Importer and Container Builder [features](https://github.com/SygniaLabs/ScallOps-Recipes#features) by:
-1. Login with your root account and follow the [instructions](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#revoke-a-personal-access-token) to revoke the post-deployment personal access token.
-2. Browse to your GCP console, navigte to IAM & Admin -> Service Accounts -> Disable a service account with the convention: **\<INFRA-NAME\>-gke-buckt@<PROJECT_ID>.iam.gserviceaccount.com**. This account was created with permissions to push and pull containers.
-
-
+To refrain from this risk you can either:
+1. Browse to your GCP console, navigte to IAM & Admin -> Service Accounts -> Disable a service account with the convention: \<INFRA-NAME\>-gke-buckt@\<PROJECT_ID\>.iam.gserviceaccount.com. This account as the account was created with permissions to push and pull containers.
+2. Enable the runner specifically to the Scallops-Recipes repository and protect it, so only the repository's owner (root) will have access to use this runner. More information: [Enable a specific runner](https://docs.gitlab.com/ee/ci/runners/runners_scope.html#enable-a-specific-runner-for-a-specific-project), [Protecting runners](https://docs.gitlab.com/ee/ci/runners/configure_runners.html#prevent-runners-from-revealing-sensitive-information)
 
 ## References
 
@@ -150,8 +201,4 @@ Infrastructure references:
 * GKE: https://cloud.google.com/kubernetes-engine/docs/concepts/kubernetes-engine-overview 
 * Container registry access: https://cloud.google.com/container-registry/docs/access-control 
 * Helm Charts: https://helm.sh/docs/topics/charts/ 
-* Kaniko: https://github.com/GoogleContainerTools/kaniko 
-
-Issues:
-
-* K8s windows exec support: https://gitlab.com/gitlab-org/gitlab-runner/-/issues/4014 
+* Kaniko: https://github.com/GoogleContainerTools/kaniko
