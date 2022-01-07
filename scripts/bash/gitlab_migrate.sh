@@ -31,8 +31,6 @@ echo "INFO: external IP is $EXTERNAL_IP"
 # Secrets variables
 GITLAB_INITIAL_ROOT_PASSWORD_SECRET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-initial-root-pwd-secret`
 GITLAB_INITIAL_ROOT_PASSWORD=`gcloud secrets versions access latest --secret=$GITLAB_INITIAL_ROOT_PASSWORD_SECRET`
-GITLAB_API_TOKEN_SECRET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-api-token-secret`
-GITLAB_API_TOKEN=`gcloud secrets versions access latest --secret=$GITLAB_API_TOKEN_SECRET`
 GITLAB_RUNNER_REG_SECRET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-ci-runner-registration-token-secret`
 GITLAB_RUNNER_REG=`gcloud secrets versions access latest --secret=$GITLAB_RUNNER_REG_SECRET`
 
@@ -145,10 +143,6 @@ sleep 20
 echo "INFO: Seeding root password"
 sudo gitlab-rails runner "user = User.find_by_username('root'); user.password = '$GITLAB_INITIAL_ROOT_PASSWORD'; user.password_confirmation = '$GITLAB_INITIAL_ROOT_PASSWORD'; user.save!"
 
-# Seed the newly created Write api token of root
-echo "INFO: Seeding root write api key"
-sudo gitlab-rails runner "token = User.find_by_username('root').personal_access_tokens.create(scopes: [:api], name: 'Gitlab post deployment script'); token.set_token('$GITLAB_API_TOKEN'); token.save!"
-
 # Seed shared runners registartion token
 echo "INFO: Runners registration token..."
 sudo gitlab-rails runner "appset = Gitlab::CurrentSettings.current_application_settings; appset.set_runners_registration_token('$GITLAB_RUNNER_REG'); appset.save!"
@@ -157,9 +151,21 @@ sudo gitlab-rails runner "appset = Gitlab::CurrentSettings.current_application_s
 # Set instance level environment variables, so pipelines can utilize them
 echo "INFO: Setting instance level CI/CD variables"
 GCP_PROJECT_ID=`gcloud config list --format 'value(core.project)' 2>/dev/null`
-curl -X POST -k -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" "https://localhost/api/v4/admin/ci/variables" --form "key=GCP_PROJECT_ID" --form "value=$GCP_PROJECT_ID"
+INSTANCE_INTERNAL_HOSTNAME=`curl -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/hostname"`
+INSTANCE_INTERNAL_URL=$INSTANCE_PROTOCOL://$INSTANCE_INTERNAL_HOSTNAME
+INSTANCE_INTERNAL_API_V4_URL=$INSTANCE_PROTOCOL://$INSTANCE_INTERNAL_HOSTNAME/api/v4
 
+# Create instance level variables in case they were deleted
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_HOST', value: '$INSTANCE_INTERNAL_HOSTNAME').save"
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_URL', value: '$INSTANCE_INTERNAL_URL').save"
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_API_V4_URL', value: '$INSTANCE_INTERNAL_API_V4_URL').save"
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'GCP_PROJECT_ID', value: '$GCP_PROJECT_ID').save"
 
+# Update instance level variables values accroding to the new GCP project and compute hostname
+sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_SERVER_HOST').update(value: '$INSTANCE_INTERNAL_HOSTNAME')"
+sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_SERVER_URL').update(value: '$INSTANCE_INTERNAL_URL')"
+sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_API_V4_URL').update(value: '$INSTANCE_INTERNAL_API_V4_URL')"
+sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'GCP_PROJECT_ID').update(value: '$GCP_PROJECT_ID')"
 
 
 # Remove startup script and encrypted backup pwd (prevent from running on reboot)

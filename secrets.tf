@@ -92,12 +92,6 @@ resource "random_password" "gitlab_initial_root_pwd" {
   override_special = "-_"
 }
 
-resource "random_password" "gitlab_api_token" {
-  length           = 20
-  special          = true
-  override_special = "-_"
-}
-
 resource "random_password" "gitlab_backup_key" {
   length           = 24
   special          = true
@@ -148,30 +142,6 @@ resource "google_secret_manager_secret" "gitlab_initial_root_pwd" {
 resource "google_secret_manager_secret_version" "gitlab_initial_root_pwd" {
   secret      = google_secret_manager_secret.gitlab_initial_root_pwd.id
   secret_data = random_password.gitlab_initial_root_pwd.result
-}
-
-
-# Gitlab root account personal access token (API)
-
-resource "google_secret_manager_secret" "gitlab_api_token" {
-  provider   = google.offensive-pipeline
-  secret_id  = "${var.infra_name}-gitlab-api-token"
-  labels     = {
-          label = "gitlab"
-  }
-  replication {
-    user_managed {
-          replicas {
-            location = var.region
-      }
-    }
-  }
-}
-
-
-resource "google_secret_manager_secret_version" "gitlab_api_token" {
-  secret      = google_secret_manager_secret.gitlab_api_token.id
-  secret_data = random_password.gitlab_api_token.result
 }
 
 

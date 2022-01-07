@@ -6,7 +6,6 @@ resource "google_compute_instance" "gitlab" {
                   google_secret_manager_secret_version.gitlab-self-signed-cert-key-version,
                   google_secret_manager_secret_version.gitlab_initial_root_pwd,
                   google_secret_manager_secret_version.gitlab_runner_registration_token,
-                  google_secret_manager_secret_version.gitlab_api_token
                   ]
   provider     = google.offensive-pipeline
   name         = "${var.infra_name}-gitlab"
@@ -45,7 +44,6 @@ resource "google_compute_instance" "gitlab" {
     instance-external-domain        = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
     instance-protocol               = var.gitlab_instance_protocol
     gitlab-initial-root-pwd-secret	= google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
-    gitlab-api-token-secret         = google_secret_manager_secret.gitlab_api_token.secret_id
     gitlab-cert-key-secret         	= google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
     gitlab-cert-public-secret	    = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
     gitlab-ci-runner-registration-token-secret = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
