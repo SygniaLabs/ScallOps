@@ -46,7 +46,8 @@ Pre-requisites:
 Clone the repository
 ```bash
 git clone https://github.com/SygniaLabs/ScallOps.git
-nano ScallOps/config.tfvars
+cd ScallOps
+nano config.tfvars
 ```
 
 Carefully read the instructions related to each variable and act accordingly.
@@ -207,7 +208,7 @@ The backup process log is also uploaded to the supplied bucket on every backup.
 
 
 ## Security Considerations
-* By default a single GCP IAM service account API key can be obtained by Gitlab users with access to utilize the Kaniko-runner. This runner is attached with K8s secret that has admin access to the project's GCR bucket ("artifacts.\<project-id\>.appspot.com"). 
+* By default a single GCP IAM service account API key can be obtained by Gitlab users who have access to utilize the Kaniko-runner. This runner is attached with K8s secret that has admin access to the project's GCR bucket ("artifacts.\<project-id\>.appspot.com"). 
 
 To refrain from this risk you can either:
 1. Browse to your GCP console, navigte to IAM & Admin -> Service Accounts -> Disable a service account with the convention: \<INFRA-NAME\>-gke-buckt@\<PROJECT_ID\>.iam.gserviceaccount.com. This account was created with permissions to push and pull containers from the project's GCR.
