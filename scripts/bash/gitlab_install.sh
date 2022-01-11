@@ -64,7 +64,7 @@ curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.de
 #Specific version installation:
 echo "Downloading: gitlab-ee_$GITLAB_INSTALL_VERSION.0_amd64.deb/download.deb"
 wget --content-disposition https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$GITLAB_INSTALL_VERSION.0_amd64.deb/download.deb
-sudo GITLAB_ROOT_PASSWORD=$GITLAB_INITIAL_ROOT_PASSWORD GITLAB_SHARED_RUNNERS_REGISTRATION_TOKEN=$GITLAB_RUNNER_REG EXTERNAL_URL=$EXTERNAL_URL dpkg -i gitlab-ee_$GITLAB_INSTALL_VERSION.0_amd64.deb
+sudo GITLAB_ROOT_PASSWORD=$GITLAB_INITIAL_ROOT_PASSWORD EXTERNAL_URL=$EXTERNAL_URL dpkg -i gitlab-ee_$GITLAB_INSTALL_VERSION.0_amd64.deb
 
 
 if [[ $INSTANCE_PROTOCOL == "https" ]]
@@ -97,6 +97,9 @@ sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_URL', value: 
 sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_API_V4_URL', value: '$INSTANCE_INTERNAL_API_V4_URL').save"
 sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'GCP_PROJECT_ID', value: '$GCP_PROJECT_ID').save"
 
+# Seed shared runners registartion token
+echo "INFO: Runners registration token..."
+sudo gitlab-rails runner "appset = Gitlab::CurrentSettings.current_application_settings; appset.set_runners_registration_token('$GITLAB_RUNNER_REG'); appset.save!"
 
 # Create repo groups (ci, community)
 echo "INFO: Creating repositories groups"
