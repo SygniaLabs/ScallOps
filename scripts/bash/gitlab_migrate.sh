@@ -147,6 +147,10 @@ sudo gitlab-rails runner "user = User.find_by_username('root'); user.password = 
 echo "INFO: Runners registration token..."
 sudo gitlab-rails runner "appset = Gitlab::CurrentSettings.current_application_settings; appset.set_runners_registration_token('$GITLAB_RUNNER_REG'); appset.save!"
 
+# Seed scallops-recipes sepcific runners registration token
+echo "INFO: Seeding SCALLOPS-RECIPES runners registration token"
+SCALLOPS_RUNNER_REG=$GITLAB_RUNNER_REG-scallops-recipes
+sudo gitlab-rails runner "scallopsprj = Project.find_by_full_path('ci/scallops-recipes'); scallopsprj.set_runners_token('$SCALLOPS_RUNNER_REG'); scallopsprj.save!"
 
 # Set instance level environment variables, so pipelines can utilize them
 echo "INFO: Setting instance level CI/CD variables"
