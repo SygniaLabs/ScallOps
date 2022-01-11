@@ -7,13 +7,10 @@ resource "google_service_account" "gitlab_service_account" {
   provider     = google.offensive-pipeline
 }
 
-resource "google_project_iam_binding" "sa_binding" {
+resource "google_project_iam_member" "sa_binding" {
   provider = google.offensive-pipeline
   role     = "roles/iam.serviceAccountUser"
-
-  members  = [
-    "serviceAccount:${google_service_account.gitlab_service_account.email}"
-  ]
+  member   = "serviceAccount:${google_service_account.gitlab_service_account.email}"
 }
 
 # Gitlab instance IAM Binding to storage
@@ -78,15 +75,12 @@ resource "google_service_account" "gke_bucket_service_account" {
   provider     = google.offensive-pipeline
 }
 
-resource "google_storage_bucket_iam_binding" "containeradmin_binding" {
-  bucket  = "artifacts.${var.project_id}.appspot.com"  # Default prefix-suffix for container registry bucket
+resource "google_storage_bucket_iam_member" "containeradmin_member" {
+  bucket    = "artifacts.${var.project_id}.appspot.com"  # Default prefix-suffix for container registry bucket
   provider  = google.offensive-pipeline
   role      = "roles/storage.admin"
-  members = [
-    "serviceAccount:${google_service_account.gke_bucket_service_account.email}"
-  ]
+  member    = "serviceAccount:${google_service_account.gke_bucket_service_account.email}"
 }
-
 
 resource "google_service_account_key" "storage_admin_role" {
   service_account_id = google_service_account.gke_bucket_service_account.name
