@@ -124,19 +124,35 @@ terraform apply --var-file=./config.tfvars
 Once deployed, you should receive the Gitlab instance IP address and the secret name where the password of the Gitlab's root account is stored.
 
 ```console
-helm_release.gitlab-runner-linux: Still creating... [40s elapsed]
-helm_release.gitlab-runner-linux: Creation complete after 44s [id=linux]
+....
+kubernetes_secret.k8s_gitlab_cert_secret: Creating...
+kubernetes_namespace.sensitive-namespace: Creating...
+kubernetes_pod_disruption_budget.konnectivity-agent: Creating...
+kubernetes_pod_disruption_budget.kube-dns: Creating...
+kubernetes_secret.k8s_gitlab_cert_secret: Creation complete after 1s
+kubernetes_pod_disruption_budget.kube-dns: Creation complete after 1s [id=kube-system/k8s-pdb-kube-dns]
+kubernetes_pod_disruption_budget.konnectivity-agent: Creation complete after 1s [id=kube-system/k8s-pdb-konnectivity-agent]
+kubernetes_namespace.sensitive-namespace: Creation complete after 1s [id=sensitive]
+kubernetes_secret.k8s_gitlab_cert_secret-sensitive: Creating...
+kubernetes_secret.google-application-credentials: Creating...
+helm_release.gitlab-runner-linux: Creating...
+kubernetes_secret.google-application-credentials: Creation complete after 1s [id=sensitive/kaniko-secret]
+kubernetes_secret.k8s_gitlab_cert_secret-sensitive: Creation complete after 1s
 helm_release.gitlab-runner-win: Creating...
+helm_release.gitlab-runner-kaniko: Creating...
+helm_release.gitlab-runner-linux: Still creating... [10s elapsed]
+helm_release.gitlab-runner-linux: Creation complete after 11s [id=linux]
+helm_release.gitlab-runner-kaniko: Creation complete after 8s [id=kaniko]
 helm_release.gitlab-runner-win: Still creating... [10s elapsed]
-helm_release.gitlab-runner-win: Still creating... [20s elapsed]
-helm_release.gitlab-runner-win: Creation complete after 22s [id=windows]
+helm_release.gitlab-runner-win: Creation complete after 10s [id=windows]
 
-Apply complete! Resources: 50 added, 0 changed, 0 destroyed.
+
+Apply complete! Resources: 63 added, 0 changed, 0 destroyed.
 
 Outputs:
 
-gitlab_ext_ip = "1.2.3.4"
-gitlab_root_password_secret = "<INFRA_NAME>-gitlab-root-password"
+gitlab_ext_ip = "3.4.5.6"
+gitlab_root_password_secret = "<infra-name>-gitlab-root-password"
 ```
 
 [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository should be pre-imported into the Gitlab insatnce together with few instance level CI/CD variables configured. All you have left to do is [designing](https://github.com/SygniaLabs/ScallOps-Recipes#designing-recipes) your recipes :)
