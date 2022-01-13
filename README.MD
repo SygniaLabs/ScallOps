@@ -207,21 +207,15 @@ The backup process log is also uploaded to the supplied bucket on every backup.
 - Windows related containers are **not** built and deployed automatically to your Container Registry. For now, you will have to do it manually. You can use the supplied [Windows Dockerfiles](https://github.com/SygniaLabs/ScallOps-Recipes/tree/main/_ci-maintain/dockerfiles/windows).
 
 
-## Security Considerations
-* By default a single GCP IAM service account API key can be obtained by Gitlab users who have access to utilize the Kaniko-runner. This runner is attached with K8s secret that has admin access to the project's GCR bucket ("artifacts.\<project-id\>.appspot.com"). 
-
-To refrain from this risk you can either:
-1. Browse to your GCP console, navigte to IAM & Admin -> Service Accounts -> Disable a service account with the convention: \<INFRA-NAME\>-gke-buckt@\<PROJECT_ID\>.iam.gserviceaccount.com. This account was created with permissions to push and pull containers from the project's GCR.
-2. Enable the runner specifically to the Scallops-Recipes repository and protect it, so only the repository's owner (root) will have access to use the Kaniko-runner. More information: [Enable a specific runner](https://docs.gitlab.com/ee/ci/runners/runners_scope.html#enable-a-specific-runner-for-a-specific-project), [Protecting runners](https://docs.gitlab.com/ee/ci/runners/configure_runners.html#prevent-runners-from-revealing-sensitive-information)
+## Security Consideration
+Altough we made efforts to secure the given permissions and layout of the deployed environment, there may always be a scenario in which someone will achieve some sort of unautohrized access to the internal GCP cloud components. Therefore, it is **highly recommended to use a clean GCP project** when deploying this environment.
 
 ## References
 
 CI/CD guides:
 
 * CI/CD concept: https://hackernoon.com/understanding-the-basic-concepts-of-cicd-fw4k32s1
-
 * Gitlab CI docs: https://docs.gitlab.com/ee/ci/
-
 * Gitlab CI Runner K8s executor: https://docs.gitlab.com/runner/executors/kubernetes.html 
 
 Infrastructure references:
