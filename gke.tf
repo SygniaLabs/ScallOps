@@ -142,11 +142,6 @@ module "gke" {
 ## K8s windows node pool
 
 resource "google_container_node_pool" "windows-pool" {
-  depends_on          = [module.gke,
-                         helm_release.gitlab-runner-linux,
-                         helm_release.gitlab-runner-win,
-                         helm_release.gitlab-runner-kaniko
-                         ]
   cluster             = module.gke.cluster_id
   initial_node_count  = 1
   location            = "${var.region}-${var.zone}"

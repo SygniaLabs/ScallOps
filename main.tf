@@ -71,6 +71,7 @@ resource "helm_release" "gitlab-runner-linux" {
                 module.gke_auth
                 ]
   name       = "linux"
+  wait       = false
   # repository = "https://charts.gitlab.io/gitlab"
   chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.33.1.tgz"
   
@@ -104,6 +105,7 @@ resource "helm_release" "gitlab-runner-kaniko" {
                 kubernetes_namespace.sensitive-namespace
                 ]
   name       = "kaniko"
+  wait       = false
   namespace  = "sensitive"
   # repository = "https://charts.gitlab.io/gitlab"
   chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.33.1.tgz"
@@ -138,6 +140,7 @@ resource "helm_release" "gitlab-runner-dockerhub" {
                 kubernetes_namespace.sensitive-namespace
                 ]
   name       = "dockerhub-privates"
+  wait       = false
   namespace  = "sensitive"
   chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.33.1.tgz"
   
@@ -174,6 +177,7 @@ resource "helm_release" "gitlab-runner-win" {
                 module.gke_auth
                 ]
   name       = "windows"
+  wait       = false
   # repository = "https://charts.gitlab.io"
   chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.35.3.tgz"
   
