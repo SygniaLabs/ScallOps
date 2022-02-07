@@ -177,20 +177,12 @@ resource "google_container_node_pool" "windows-pool" {
           "disable-legacy-endpoints"   = "true"
           "node_pool"                  = "windows-pool"
           "windows"                    = "true"
-          "windows-startup-script-url" = join("", [
-                                              "gs://", google_storage_bucket.deployment_utils.name,
-                                              "/",
-                                              google_storage_bucket_object.disable_windows_defender_ps.name
-                                              ])
+          "windows-startup-script-url" = local.gke_win_pool_start_script
         }
       oauth_scopes      = ["https://www.googleapis.com/auth/cloud-platform"]
       preemptible       = false
       service_account   = module.gke.service_account
-      tags              = [
-                           join("", ["gke-", var.infra_name, "-offensive-pipeline"]), 
-                           join("", ["gke-", var.infra_name, "-offensive-pipeline-windows-pool"])
-
-          ]
+      tags              = local.gke_win_pool_tags
       taint             = [
           {
               effect = "PREFER_NO_SCHEDULE"

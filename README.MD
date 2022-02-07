@@ -39,7 +39,7 @@ Google Cloud Storage is in use to store maintenance scripts and encrypted Gitlab
 
 Pre-requisites:
 * Google Cloud subscription with **OWNER** permissions on a project (It is reccomended to use a clean GCP project)
-* Access to GCP cloud shell or local Terraform with access to your GCP
+* Access to GCP cloud shell or locally using Terraform with GCP credentials
 * Web Browser
 
 

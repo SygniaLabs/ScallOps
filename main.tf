@@ -28,27 +28,27 @@ resource "google_compute_instance" "gitlab" {
     }
 
     network_interface {
-      subnetwork = module.gcp-network.subnets_names[0]
+      subnetwork = module.gcp-network.subnets_self_links[0]
       access_config {}
     }
 
 
   metadata = {
-    gcs-prefix                      = "gs://${google_storage_bucket.deployment_utils.name}"
+    gcs-prefix                                 = "gs://${google_storage_bucket.deployment_utils.name}"
     # Migrate vars Start #
-    migrated-gitlab-backup-password = var.migrate_gitlab ? var.migrate_gitlab_backup_password : ""
-    gcs-path-to-backup              = var.migrate_gitlab ? "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_migrate_backup[0].name}" : ""
-    migrated-gitlab-version         = var.migrate_gitlab ? var.migrate_gitlab_version : ""
+    migrated-gitlab-backup-password            = var.migrate_gitlab ? var.migrate_gitlab_backup_password : ""
+    gcs-path-to-backup                         = var.migrate_gitlab ? "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_migrate_backup[0].name}" : ""
+    migrated-gitlab-version                    = var.migrate_gitlab ? var.migrate_gitlab_version : ""
     # Migrate vars End #
-    startup-script-url              = var.migrate_gitlab ? join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_migrate_script[0].name]) : join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_install_script.name])
-    instance-external-domain        = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
-    instance-protocol               = var.gitlab_instance_protocol
-    gitlab-initial-root-pwd-secret	= google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
-    gitlab-cert-key-secret         	= google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
-    gitlab-cert-public-secret	    = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
+    startup-script-url                         = var.migrate_gitlab ? join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_migrate_script[0].name]) : join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_install_script.name])
+    instance-external-domain                   = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
+    instance-protocol                          = var.gitlab_instance_protocol
+    gitlab-initial-root-pwd-secret	           = google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
+    gitlab-cert-key-secret         	           = google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
+    gitlab-cert-public-secret	               = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
     gitlab-ci-runner-registration-token-secret = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
-    gitlab-backup-key-secret        = google_secret_manager_secret.gitlab_backup_key.secret_id
-    gitlab-backup-bucket-name       = var.backups_bucket_name
+    gitlab-backup-key-secret                   = google_secret_manager_secret.gitlab_backup_key.secret_id
+    gitlab-backup-bucket-name                  = var.backups_bucket_name
   }
 lifecycle {
     ignore_changes = [
