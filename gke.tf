@@ -104,6 +104,7 @@ module "gke" {
   node_pools = [
     {
       name                   = "linux-pool"
+      version                = "1.22.6-gke.300"      
       machine_type           = "e2-highcpu-2"
       min_count              = 1
       max_count              = 8
