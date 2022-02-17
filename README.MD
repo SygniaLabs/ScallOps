@@ -13,6 +13,8 @@ Security teams and individuals can develop, collaborate and utilize the framewor
 
 Refer to the [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository to learn more about the features of this framework and how you can design your own Recipes.
 
+Developed by [@Gil Biton](https://twitter.com/B1t0n_)
+
 <p align="center">
   <img src="./img/scallops.png" alt="ScallOps logo" width="" height="300">
 </p>
