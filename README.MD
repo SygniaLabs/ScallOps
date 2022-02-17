@@ -25,22 +25,23 @@ Refer to the [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) 
 * On-demand automated node scalability (Google Kubernets Engine).
 * Access to work with private container images from your Google Container Registry (GCR).
 * Ability to supply Docker Hub credentials and work with private container images from your Docker Hub account.
-* Capability to push customized container images to your GCR.
-* Automated, weekly Gitlab backup.
-* Automatically attach external hostname using Google DNS managed zones.
+* Capability to automatically build Dockerfiles and push the images to your GCR.
+* Automated, weekly Gitlab backup to a desginated bucket.
+* Attach external hostname to the framework using Google DNS managed zones.
 * Ability to migrate from an older Gitlab instance.
 
 ## Deployment
 
 The framework can be deployed to GCP using the provided Terraform scripts.
-It is maninly built from a Gitlab instance that provides the CI features and a Kubernetes cluster that execute CI jobs on the relevant operating systems.
+It is mainly built from a Gitlab instance that provides the CI features and a Kubernetes cluster that execute CI jobs on the relevant operating systems.
 There is also a use of Cloud Container Registry to store customized container images that we may use during operating the framework.
 Google Cloud Storage is in use to store maintenance scripts and encrypted Gitlab backups.
 
 Pre-requisites:
-* Google Cloud subscription with **OWNER** permissions on a project (It is reccomended to use a clean GCP project)
-* Access to GCP cloud shell or locally using Terraform with GCP credentials
-* Web Browser
+* Google Cloud subscription with **OWNER** permissions on a project (It is reccomended to use a **clean** GCP project).
+* Google Storage Bucket to store the backups. This Bucket is not required to share the same GCP project with the rest of the deployment.
+* Access to GCP cloud shell or locally using Terraform with GCP credentials.
+* Web Browser.
 
 
 Clone the repository
@@ -196,7 +197,7 @@ Idle:
 
 Per Job:
 * Linux: Same as idle since system already up. When scaled 0.09$ per hour for each running node.
-* Windows: Additional 0.006 for an average build (C# compilation) job (2 mins).
+* Windows: Same as idle since one system is already up. When scaled additional 0.03$ for an average compilation job (10 mins).
 
 *Note that Jobs pricing can decrease depending on a simultaneous usage.
 
