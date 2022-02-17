@@ -37,10 +37,10 @@ resource "google_compute_instance" "gitlab" {
     gcs-prefix                                 = "gs://${google_storage_bucket.deployment_utils.name}"
     # Migrate vars Start #
     migrated-gitlab-backup-password            = var.migrate_gitlab ? var.migrate_gitlab_backup_password : ""
-    gcs-path-to-backup                         = var.migrate_gitlab ? "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_migrate_backup[0].name}" : ""
+    gcs-path-to-backup                         = var.migrate_gitlab ? local.gitlab_migrate_backup : ""
     migrated-gitlab-version                    = var.migrate_gitlab ? var.migrate_gitlab_version : ""
     # Migrate vars End #
-    startup-script-url                         = var.migrate_gitlab ? join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_migrate_script[0].name]) : join("", ["gs://", google_storage_bucket.deployment_utils.name,"/",google_storage_bucket_object.gitlab_install_script.name])
+    startup-script-url                         = var.migrate_gitlab ? local.gitlab_migrate_script : local.gitlab_install_script
     instance-external-domain                   = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
     instance-protocol                          = var.gitlab_instance_protocol
     gitlab-initial-root-pwd-secret	           = google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
