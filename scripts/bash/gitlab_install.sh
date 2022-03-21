@@ -103,8 +103,8 @@ sudo gitlab-rails runner "appset = Gitlab::CurrentSettings.current_application_s
 
 # Create repo groups (ci, community)
 echo "INFO: Creating repositories groups"
-sudo gitlab-rails runner "Group.new(name: 'CI CD Tools', path: 'ci', visibility_level: 10).save"
-sudo gitlab-rails runner "Group.new(name: 'Community Tools', path: 'community', visibility_level: 10).save"
+sudo gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'CI CD Tools', path: 'ci', visibility_level: 10}).execute"
+sudo gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'Community Tools', path: 'community', visibility_level: 10}).execute"
 
 
 # Import SCALLOPS-RECIPES project repo
