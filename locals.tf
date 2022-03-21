@@ -6,6 +6,6 @@ locals {
     gke_win_pool_start_script = "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.disable_windows_defender_ps.name}"
     gke_win_pool_tags         = ["gke-${var.infra_name}-offensive-pipeline","gke-${var.infra_name}-offensive-pipeline-windows-pool"]
     gitlab_install_script     = "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_install_script.name}"
-    gitlab_migrate_script     = "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_migrate_script[0].name}"
-    gitlab_migrate_backup     = "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_migrate_backup[0].name}"
+    gitlab_migrate_script     = "${var.migrate_gitlab ? "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_migrate_script[0].name}" : ""}"
+    gitlab_migrate_backup     = "${var.migrate_gitlab ? "gs://${google_storage_bucket.deployment_utils.name}/${google_storage_bucket_object.gitlab_migrate_backup[0].name}" : ""}"
 }
