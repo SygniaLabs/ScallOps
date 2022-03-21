@@ -158,7 +158,11 @@ gitlab_root_password_secret = "<infra-name>-gitlab-root-password"
 
 [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository should be pre-imported into the Gitlab insatnce together with few instance level CI/CD variables configured. All you have left to do is [designing](https://github.com/SygniaLabs/ScallOps-Recipes#designing-recipes) your recipes :)
 If you don't see the Recipes repository, you can import it [manually](https://docs.gitlab.com/ee/user/project/import/repo_by_url.html).
-
+> Important! If it is your initial deployment, you must run the deployment's initialization pipeline. 
+1. Refer to the imported Recipes repository at /ci/scallops-recipes in your Gitlab instance. 
+2. Navigate to CI/CD -> Pipelines -> Run Pipeline.
+3. Delete all variables and add 'DEPLOYMENT_INIT' with value 1.
+4. Hit 'Run Pipeline' and wait for the initialization process to complete.
 
 ## Architecture
 
