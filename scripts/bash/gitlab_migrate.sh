@@ -167,6 +167,7 @@ sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_API_V4_URL', value: 
 sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'GCP_PROJECT_ID', value: '$GCP_PROJECT_ID').save"
 
 # Update instance level variables values accroding to the new GCP project and compute hostname
+sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_EXTERNAL_URL').update(value: '$EXTERNAL_URL')"
 sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_SERVER_HOST').update(value: '$INSTANCE_INTERNAL_HOSTNAME')"
 sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_SERVER_URL').update(value: '$INSTANCE_INTERNAL_URL')"
 sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_API_V4_URL').update(value: '$INSTANCE_INTERNAL_API_V4_URL')"
