@@ -25,7 +25,7 @@ runners:
 
       [runners.kubernetes.node_selector]
         "node_pool" = "windows-pool"   
-    		"kubernetes.io/arch" = "amd64"
+        "kubernetes.io/arch" = "amd64"
         "kubernetes.io/os" = "windows"
         "node.kubernetes.io/windows-build" = "10.0.17763"        
 
