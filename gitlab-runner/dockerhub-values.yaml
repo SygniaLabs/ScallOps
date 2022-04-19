@@ -10,18 +10,21 @@ rbac:
  - apiGroups: [""]
    resources: ["pods/log"]
    verbs: ["get"]
-
+   
 runners:
-  tags: "linux,kubernetes"
+  imagePullPolicy: always
+  protected: true
+  tags: "dockerhub,kubernetes"
   config: |
     [[runners]]
       executor = "kubernetes"
-      limit = 30
       shell = "bash"
+      
       [runners.kubernetes.node_selector]
         "node_pool" = "linux-pool"
 
       [runners.kubernetes]
-        namespace = "default"
+        namespace = "sensitive"
         poll_interval = 30
         poll_timeout = 3600
+        

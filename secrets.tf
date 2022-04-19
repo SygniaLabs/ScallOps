@@ -17,11 +17,12 @@ resource "tls_self_signed_cert" "gitlab-self-signed-cert" {
     organization        = "Company"
   }
   
-  dns_names             = [
-                           "${var.infra_name}-gitlab.local",
-                           local.instance_internal_domain,
-                           var.instance_ext_domain
-                           ]
+  dns_names             = flatten([
+                            "${var.infra_name}-gitlab.local",
+                            local.instance_internal_domain,
+                            var.external_hostname != "" ? [var.external_hostname] : []
+                            ])
+                           
   ip_addresses          = ["10.0.0.2"]
   validity_period_hours = 87600 //Certificate will be valid for 10 years 
 
@@ -35,7 +36,7 @@ resource "tls_self_signed_cert" "gitlab-self-signed-cert" {
 # Gitlab server certificate
 
 resource "google_secret_manager_secret" "gitlab-self-signed-cert-key" {
-  project    = var.project_id
+  provider   = google.offensive-pipeline
   secret_id  = "${var.infra_name}-gitlab-cert-key"
   labels     = {
         label = "gitlab-cert"
@@ -57,7 +58,7 @@ resource "google_secret_manager_secret_version" "gitlab-self-signed-cert-key-ver
 
 
 resource "google_secret_manager_secret" "gitlab-self-signed-cert-crt" {
-  project    = var.project_id
+  provider   = google.offensive-pipeline
   secret_id  = "${var.infra_name}-gitlab-cert-crt"
   labels     = {
           label = "gitlab-cert"
@@ -89,19 +90,19 @@ resource "random_password" "gitlab_runner_registration_token" {
 resource "random_password" "gitlab_initial_root_pwd" {
   length           = 16
   special          = true
+  override_special = "-_"
 }
 
-resource "random_password" "gitlab_api_token" {
-  length           = 20
+resource "random_password" "gitlab_backup_key" {
+  length           = 24
   special          = true
   override_special = "-_"
 }
 
-
 # Gitlab runner registration token
 
 resource "google_secret_manager_secret" "gitlab_runner_registration_token" {
-  project    = var.project_id
+  provider   = google.offensive-pipeline
   secret_id  = "${var.infra_name}-gitlab-runner-reg"
   labels     = {
           label = "gitlab"
@@ -124,7 +125,7 @@ resource "google_secret_manager_secret_version" "gitlab_runner_registration_toke
 
 # Gitlab initial root password
 resource "google_secret_manager_secret" "gitlab_initial_root_pwd" {
-  project    = var.project_id
+  provider   = google.offensive-pipeline
   secret_id  = "${var.infra_name}-gitlab-root-password"
   labels     = {
           label = "gitlab"
@@ -145,11 +146,11 @@ resource "google_secret_manager_secret_version" "gitlab_initial_root_pwd" {
 }
 
 
-# Gitlab root account personal access token (API)
+# Gitlab backup archives password
 
-resource "google_secret_manager_secret" "gitlab_api_token" {
-  project    = var.project_id
-  secret_id  = "${var.infra_name}-gitlab-api-token"
+resource "google_secret_manager_secret" "gitlab_backup_key" {
+  provider   = google.offensive-pipeline
+  secret_id  = "${var.infra_name}-gitlab-backup-key"
   labels     = {
           label = "gitlab"
   }
@@ -163,7 +164,16 @@ resource "google_secret_manager_secret" "gitlab_api_token" {
 }
 
 
-resource "google_secret_manager_secret_version" "gitlab_api_token" {
-  secret      = google_secret_manager_secret.gitlab_api_token.id
-  secret_data = random_password.gitlab_api_token.result
+resource "google_secret_manager_secret_version" "gitlab_backup_key" {
+  secret      = google_secret_manager_secret.gitlab_backup_key.id
+  secret_data = random_password.gitlab_backup_key.result
+}
+
+
+# Docker hub credentials secret
+
+data "google_secret_manager_secret_version" "dockerhub-secret" {
+  provider  = google.offensive-pipeline
+  count     = var.dockerhub-creds-secret != "" ? 1 : 0
+  secret    = var.dockerhub-creds-secret
 }
