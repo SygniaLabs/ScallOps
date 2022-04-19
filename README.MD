@@ -1,6 +1,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=plastic)](https://opensource.org/licenses/MIT)
 ![Terraform](https://img.shields.io/badge/Terraform-v1.0.11%7Ev1.1.8-8040c9.svg?style=plastic)
-![Gitlab](https://img.shields.io/badge/Gitlab-v14.5.2-fd7e14.svg?style=plastic)
+![Gitlab](https://img.shields.io/badge/Gitlab-v14.9.3-fd7e14.svg?style=plastic)
 ![GKE](https://img.shields.io/badge/GKE-1.21.6-1A73E8.svg?style=plastic)
 ![ScallOps](https://img.shields.io/badge/ScallOps-v0.3-000000.svg?style=plastic)
 
