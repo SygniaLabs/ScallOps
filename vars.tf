@@ -14,8 +14,8 @@ variable "infra_name" {
     type        = string
     description = "(required) Infrastructure name or Team name" 
     validation {
-        condition     = can(regex("^[a-z]([-a-z0-9]*[a-z0-9])$", var.infra_name))  // Due to Certificate SAN, and service account name translation to email, and 1 another.
-        error_message = "The infrastructure name must comply with the following regex [a-z]([-a-z0-9]*[a-z0-9])."  
+        condition     = can(regex("^[a-z]([a-z0-9]*[a-z0-9])$", var.infra_name))  // Due to Certificate SAN, and service account name translation to email, and 1 another.
+        error_message = "The infrastructure name must comply with the following regex ^[a-z]([a-z0-9]*[a-z0-9])$ )."  
     }
 }
 
