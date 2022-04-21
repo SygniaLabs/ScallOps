@@ -128,7 +128,7 @@ resource "helm_release" "gitlab-runner-kaniko" {
   }
   set_sensitive {
     name  = "runnerRegistrationToken"
-    value = "${random_password.gitlab_runner_registration_token.result}-scallops-recipes"
+    value = "GR1348941${random_password.gitlab_runner_registration_token.result}-scallops-recipes"
   }
 }
 
