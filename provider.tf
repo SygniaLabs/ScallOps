@@ -3,6 +3,11 @@ provider "google" {
     project = var.project_id
 }
 
+provider "google" {
+    alias   = "dns_infra"
+    project = var.dns_project_id
+}
+
 provider "kubernetes" {
   host                   = module.gke_auth.host
   token                  = module.gke_auth.token

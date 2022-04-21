@@ -2,12 +2,10 @@
 
 resource "google_compute_instance" "gitlab" {
   depends_on   = [
-                  module.gcp-network,
                   google_secret_manager_secret_version.gitlab-self-signed-cert-crt-version,
                   google_secret_manager_secret_version.gitlab-self-signed-cert-key-version,
                   google_secret_manager_secret_version.gitlab_initial_root_pwd,
                   google_secret_manager_secret_version.gitlab_runner_registration_token,
-                  google_secret_manager_secret_version.gitlab_api_token
                   ]
   provider     = google.offensive-pipeline
   name         = "${var.infra_name}-gitlab"
@@ -30,28 +28,36 @@ resource "google_compute_instance" "gitlab" {
     }
 
     network_interface {
-      subnetwork = "${var.infra_name}-offensive-pipeline-subnet"
+      subnetwork = module.gcp-network.subnets_self_links[0]
       access_config {}
     }
 
 
   metadata = {
-    gcs-prefix                      = "gs://${google_storage_bucket.gitlab_deploy_utils.name}"
-    startup-script-url              = join("", [
-                                                "gs://", google_storage_bucket.gitlab_deploy_utils.name,
-                                                "/",
-                                                google_storage_bucket_object.gitlab_install_script.name
-                                                ])
-    cicd-utils-bucket-name          = google_storage_bucket.cicd_utils.name
-    instance-ext-domain             = local.instance_internal_domain
-    instance-protocol               = var.gitlab_instance_protocol
-	  gitlab-initial-root-pwd-secret	= google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
-    gitlab-api-token-secret         = google_secret_manager_secret.gitlab_api_token.secret_id
-    gitlab-cert-key-secret         	= google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
-    gitlab-cert-public-secret	      = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
+    gcs-prefix                                 = "gs://${google_storage_bucket.deployment_utils.name}"
+    # Migrate vars Start #
+    migrated-gitlab-backup-password            = var.migrate_gitlab ? var.migrate_gitlab_backup_password : ""
+    gcs-path-to-backup                         = var.migrate_gitlab ? local.gitlab_migrate_backup : ""
+    migrated-gitlab-version                    = var.migrate_gitlab ? var.migrate_gitlab_version : ""
+    # Migrate vars End #
+    startup-script-url                         = var.migrate_gitlab ? local.gitlab_migrate_script : local.gitlab_install_script
+    instance-external-domain                   = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
+    instance-protocol                          = var.gitlab_instance_protocol
+    gitlab-initial-root-pwd-secret             = google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
+    gitlab-cert-key-secret                     = google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
+    gitlab-cert-public-secret	               = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
     gitlab-ci-runner-registration-token-secret = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
+    gitlab-backup-key-secret                   = google_secret_manager_secret.gitlab_backup_key.secret_id
+    gitlab-backup-bucket-name                  = var.backups_bucket_name
   }
+lifecycle {
+    ignore_changes = [
+        metadata,
+    ]
+  }
+
 }
+
 
 
 
@@ -65,11 +71,47 @@ resource "helm_release" "gitlab-runner-linux" {
                 module.gke_auth
                 ]
   name       = "linux"
+  wait       = false
   # repository = "https://charts.gitlab.io/gitlab"
-  chart      = "https://gitlab.com/gitlab-org/charts/gitlab-runner/-/archive/v0.32.0/gitlab-runner-v0.32.0.tar.gz"
+  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.39.0.tgz"
   
   values     = [
     file("${path.module}/gitlab-runner/linux-values.yaml")
+    ]
+ 
+  set {
+    name  = "gitlabUrl"
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+  }
+  set {
+    name  = "runners.cloneUrl"
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+  }
+  set {
+    name  = "certsSecretName"
+    value = "${local.instance_internal_domain}-cert"
+  }
+  set_sensitive {
+    name  = "runnerRegistrationToken"
+    value = random_password.gitlab_runner_registration_token.result
+  }
+}
+
+
+resource "helm_release" "gitlab-runner-kaniko" {
+  depends_on = [
+                module.gke,
+                module.gke_auth,
+                kubernetes_namespace.sensitive-namespace
+                ]
+  name       = "kaniko"
+  wait       = false
+  namespace  = "sensitive"
+  # repository = "https://charts.gitlab.io/gitlab"
+  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.39.0.tgz"
+  
+  values     = [
+    file("${path.module}/gitlab-runner/kaniko-values.yaml")
     ]
 
   set {
@@ -77,12 +119,50 @@ resource "helm_release" "gitlab-runner-linux" {
     value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
-    name  = "cloneUrl"
+    name  = "runners.cloneUrl"
     value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
     name  = "certsSecretName"
     value = "${local.instance_internal_domain}-cert"
+  }
+  set_sensitive {
+    name  = "runnerRegistrationToken"
+    value = "${random_password.gitlab_runner_registration_token.result}-scallops-recipes"
+  }
+}
+
+resource "helm_release" "gitlab-runner-dockerhub" {
+  count  = var.dockerhub-creds-secret != "" ? 1 : 0  
+  depends_on = [
+                module.gke,
+                module.gke_auth,
+                kubernetes_namespace.sensitive-namespace
+                ]
+  name       = "dockerhub-privates"
+  wait       = false
+  namespace  = "sensitive"
+  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.39.0.tgz"
+  
+  values     = [
+    file("${path.module}/gitlab-runner/dockerhub-values.yaml")
+    ]
+
+  set {
+    name  = "gitlabUrl"
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+  }
+  set {
+    name  = "runners.cloneUrl"
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+  }
+  set {
+    name  = "certsSecretName"
+    value = "${local.instance_internal_domain}-cert"
+  }
+  set {
+    name  = "runners.imagePullSecrets[0]"
+    value = kubernetes_secret.dockerhub-creds-config[0].metadata[0].name
   }
   set_sensitive {
     name  = "runnerRegistrationToken"
@@ -97,8 +177,9 @@ resource "helm_release" "gitlab-runner-win" {
                 module.gke_auth
                 ]
   name       = "windows"
+  wait       = false
   # repository = "https://charts.gitlab.io"
-  chart      = "https://gitlab.com/gitlab-org/charts/gitlab-runner/-/archive/v0.32.0/gitlab-runner-v0.32.0.tar.gz"
+  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.35.3.tgz"
   
   values     = [
     file("${path.module}/gitlab-runner/win-values.yaml")
@@ -109,8 +190,8 @@ resource "helm_release" "gitlab-runner-win" {
     value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
-    name  = "cloneUrl"
-    value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+    name  = "runners.cloneUrl"
+    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
   }
   set {
     name  = "certsSecretName"
@@ -119,135 +200,5 @@ resource "helm_release" "gitlab-runner-win" {
   set_sensitive {
     name  = "runnerRegistrationToken"
     value = random_password.gitlab_runner_registration_token.result
-  }
-}
-
-########################### GKE Cluster #################################################
-
-
-resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
-  depends_on  = [module.gke_auth, module.gke]
-  data        = {
-    "${local.instance_internal_domain}.crt" = tls_self_signed_cert.gitlab-self-signed-cert.cert_pem
-  }
-  metadata {
-    name      = "${local.instance_internal_domain}-cert"
-    namespace = "default"
-  }
-}
-
-
-resource "kubernetes_secret" "google-application-credentials" {
-  depends_on  = [module.gke_auth, module.gke]
-  data        = {
-    "kaniko-token-secret.json" = base64decode(google_service_account_key.storage_admin_role.private_key)
-  }
-  metadata {
-    name      = "kaniko-secret"
-    namespace = "default"
-  }
-}
-
-
-module "gke_auth" {
-  depends_on   = [module.gcp-network]
-  source       = "terraform-google-modules/kubernetes-engine/google//modules/auth"
-  project_id   = var.project_id
-  cluster_name = module.gke.name
-  location     = module.gke.location
-}
-
-module "gke" {
-  depends_on                 = [module.gcp-network, google_compute_instance.gitlab]
-  source                     = "terraform-google-modules/kubernetes-engine/google"
-  version                    = "15.0.0"
-  project_id                 = var.project_id
-  name                       = "${var.infra_name}-offensive-pipeline-gke"
-  regional                   = false
-  region                     = var.region #Required if Regional true
-  zones                      = ["${var.region}-${var.zone}"]
-  network                    = module.gcp-network.network_name
-  subnetwork                 = "${var.infra_name}-offensive-pipeline-subnet"
-  default_max_pods_per_node  = 80
-  ip_range_pods              = "${var.infra_name}-gke-pods-subnet"
-  ip_range_services          = "${var.infra_name}-gke-service-subnet"
-  http_load_balancing        = false
-  horizontal_pod_autoscaling = true
-  network_policy             = false
-  remove_default_node_pool   = false
-  initial_node_count         = 1
-
-
-  node_pools = [
-    {
-      name                   = "linux-pool"
-      machine_type           = "e2-medium"
-      min_count              = 0
-      max_count              = 8
-      local_ssd_count        = 0
-      disk_size_gb           = 100
-      disk_type              = "pd-standard"
-      image_type             = "UBUNTU" // 20.04
-      auto_repair            = false
-      auto_upgrade           = false
-      service_account        = ""
-      preemptible            = false
-      initial_node_count     = 0
-    },
-    {
-      name                   = "windows-pool"
-      machine_type           = "n1-standard-2"
-      min_count              = 1
-      max_count              = 8
-      local_ssd_count        = 0
-      disk_size_gb           = 200
-      disk_type              = "pd-standard"
-      image_type             = "WINDOWS_LTSC" // 1809
-      auto_repair            = false
-      auto_upgrade           = false
-      service_account        = ""
-      preemptible            = false
-      initial_node_count     = 1
-    }    
-  ] 
-
-  node_pools_oauth_scopes = {
-    all          = []
-    windows-pool = ["https://www.googleapis.com/auth/cloud-platform"]
-  }
-
-  node_pools_labels = {
-    all          = {}
-    windows-pool = {windows = true}
-  }
-
-  node_pools_metadata = {
-    all = {
-      disable-legacy-endpoints = true
-    }
-
-    windows-pool = {
-      windows                    = true,
-      windows-startup-script-url =  join("", [
-                                              "gs://", google_storage_bucket.cicd_utils.name,
-                                              "/",
-                                              google_storage_bucket_object.disable_windows_defender_ps.name
-                                              ])
-    }
-  }
-
-  node_pools_taints = {
-    all          = []
-    windows-pool = [
-        {
-            key    = "node.kubernetes.io/os"
-            value  = "windows"
-            effect = "PREFER_NO_SCHEDULE"
-        }
-    ]
-  }
-
-  node_pools_tags = {
-    all = []
   }
 }
