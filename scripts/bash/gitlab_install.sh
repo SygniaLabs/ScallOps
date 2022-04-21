@@ -116,7 +116,7 @@ sudo gitlab-rails runner "newprj = Project.find_by_full_path('ci/scallops-recipe
 
 # Seed scallops-recipes sepcific runners registration token
 echo "INFO: Seeding SCALLOPS-RECIPES runners registration token"
-SCALLOPS_RUNNER_REG=$GITLAB_RUNNER_REG-scallops-recipes
+SCALLOPS_RUNNER_REG=GR1348941$GITLAB_RUNNER_REG-scallops-recipes
 sudo gitlab-rails runner "scallopsprj = Project.find_by_full_path('ci/scallops-recipes'); scallopsprj.set_runners_token('$SCALLOPS_RUNNER_REG'); scallopsprj.save!"
 
 # Remove startup script reference (prevent from running on rebbot)
