@@ -81,7 +81,8 @@ module "gke_auth" {
 module "gke" {
   depends_on                 = [google_compute_instance.gitlab]
   source                     = "terraform-google-modules/kubernetes-engine/google"
-  version                    = "17.3.0"
+  version                    = "22.0.0" # https://github.com/terraform-google-modules/terraform-google-kubernetes-engine
+  kubernetes_version         = var.gke_version
   project_id                 = var.project_id
   name                       = "${var.infra_name}-offensive-pipeline"
   regional                   = false
@@ -104,14 +105,14 @@ module "gke" {
   node_pools = [
     {
       name                   = "linux-pool"
-      version                = "1.22.6-gke.300"      
+      version                = var.gke_linux_pool_version
       machine_type           = "e2-highcpu-2"
       min_count              = 1
       max_count              = 8
       local_ssd_count        = 0
       disk_size_gb           = 100
       disk_type              = "pd-standard"
-      image_type             = "UBUNTU" // 20.04
+      image_type             = "ubuntu_containerd"
       auto_repair            = false
       auto_upgrade           = false
       preemptible            = false
@@ -146,19 +147,19 @@ resource "google_container_node_pool" "windows-pool" {
   cluster             = module.gke.cluster_id
   initial_node_count  = 1
   location            = "${var.region}-${var.zone}"
-  max_pods_per_node   = 10
+  max_pods_per_node   = 8
   name                = "windows-pool"
   #node_count          = 0
   node_locations      = ["${var.region}-${var.zone}"]
   provider            = google.offensive-pipeline
-  version             = "1.20.9-gke.1001" #Make upgrades from here.
+  version             = var.gke_windows_pool_version
   autoscaling {
       max_node_count = 8
       min_node_count = 1 # at least 1 required since Gitlab K8s runner for windows has issue with scaling-up from 0->1 nodes as node-pool label cant contain the windows build version
     }
 
   management {
-      auto_repair  = false
+      auto_repair  = true
       auto_upgrade = false
     }
 
@@ -166,7 +167,7 @@ resource "google_container_node_pool" "windows-pool" {
       disk_size_gb      = 200
       disk_type         = "pd-standard"
       guest_accelerator = []
-      image_type        = "WINDOWS_LTSC"
+      image_type        = "windows_ltsc_containerd"
       labels            = {
           "cluster_name" = module.gke.name
           "node_pool"    = "windows-pool"
@@ -204,7 +205,6 @@ resource "google_container_node_pool" "windows-pool" {
 
       workload_metadata_config {
         mode          = "GKE_METADATA"
-        node_metadata = "GKE_METADATA_SERVER"
         }
     }
 

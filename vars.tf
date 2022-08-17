@@ -127,6 +127,31 @@ variable "zone" {
 
 
 
+# GKE related variables
+variable "gke_version" {
+  description = "Kubernetes engine version"
+  type        = string
+  default     = "1.24.2-gke.1900"
+}
+
+variable "gke_linux_pool_version" {
+  description = "GKE Linux node pool version"
+  type        = string
+  default     = "1.22.10-gke.600"
+}
+
+variable "gke_windows_pool_version" {
+  description = "GKE Windows node pool version"
+  type        = string
+  default     = "1.22.10-gke.600"
+}
+
+variable "runner_chart_url" {
+  description = "Gitlab runner Helm chart archive URL" # https://artifacthub.io/packages/helm/gitlab/gitlab-runner
+  type        = string
+  default     = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.43.1.tgz" # Correspond to Gitlab 15.2.1
+}
+
 
 # DNS and managed zone variables
 variable "external_hostname" {

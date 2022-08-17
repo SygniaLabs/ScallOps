@@ -1,8 +1,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=plastic)](https://opensource.org/licenses/MIT)
-![Terraform](https://img.shields.io/badge/Terraform-v1.0.11%7Ev1.1.8-8040c9.svg?style=plastic)
-![Gitlab](https://img.shields.io/badge/Gitlab-v14.9.3-fd7e14.svg?style=plastic)
-![GKE](https://img.shields.io/badge/GKE-1.21.6-1A73E8.svg?style=plastic)
-![ScallOps](https://img.shields.io/badge/ScallOps-v0.3-000000.svg?style=plastic)
+![Terraform](https://img.shields.io/badge/Terraform-v1.2.6-8040c9.svg?style=plastic)
+![Gitlab](https://img.shields.io/badge/Gitlab-v15.2.1-fd7e14.svg?style=plastic)
+![GKE](https://img.shields.io/badge/GKE-1.24.2-1A73E8.svg?style=plastic)
+![ScallOps](https://img.shields.io/badge/ScallOps-v0.4-000000.svg?style=plastic)
 
 # SCALLOPS
 
@@ -13,7 +13,8 @@ It utilizes the CI/CD concept to manage and automate the weaponization and deplo
 
 Security teams and individuals can develop, collaborate and utilize the framework's "Recipes" in order to perform their Red Team tasks with greater efficiency.
 
-Refer to the [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository to learn more about the features of this framework and how you can design your own Recipes.
+You can choose to deploy the framework's infrastructure using the Terraform scripts within this repository or use your own infrastructure.
+Refer to the [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository to learn more about the infrasctrucure requirements.
 
 Developed by [@Gil Biton](https://twitter.com/B1t0n_)
 
@@ -21,7 +22,7 @@ Developed by [@Gil Biton](https://twitter.com/B1t0n_)
   <img src="./img/scallops.png" alt="ScallOps logo" width="" height="300">
 </p>
 
-## Features
+## Infrastructure Features
 * All Gitlab's CI/CD features for designning the Recipes.
 * Linux & Windows based operating systems for running the Recipes weaponization jobs.
 * On-demand automated node scalability (Google Kubernets Engine).
@@ -34,12 +35,12 @@ Developed by [@Gil Biton](https://twitter.com/B1t0n_)
 
 ## Deployment
 
-The framework can be deployed to GCP using the provided Terraform scripts.
+The infrastructure can be deployed to GCP using the provided Terraform scripts.
 It is mainly built from a Gitlab instance that provides the CI features and a Kubernetes cluster that execute CI jobs on the relevant operating systems.
 There is also a use of Cloud Container Registry to store customized container images that we may use during operating the framework.
 Google Cloud Storage is in use to store maintenance scripts and encrypted Gitlab backups.
 
-Pre-requisites:
+Automated deployment Pre-requisites:
 * Google Cloud subscription with **OWNER** permissions on a project (It is reccomended to use a **clean** GCP project).
 * Google Storage Bucket to store the backups. This Bucket is not required to share the same GCP project with the rest of the deployment.
 * Access to GCP cloud shell or locally using Terraform with GCP credentials.
@@ -158,7 +159,7 @@ gitlab_ext_ip = "3.4.5.6"
 gitlab_root_password_secret = "<infra-name>-gitlab-root-password"
 ```
 
-[ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository should be pre-imported into the Gitlab insatnce together with few instance level CI/CD variables configured. All you have left to do is designing your recipes :)
+[ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository should be pre-imported into the Gitlab insatnce together with few instance level CI/CD variables configured. All you have left to do is executing the recipes :)
 If you don't see the Recipes repository, you can import it [manually](https://docs.gitlab.com/ee/user/project/import/repo_by_url.html).
 > Important! If it is your initial deployment, you must run the deployment's initialization pipeline. 
 1. Refer to the imported Recipes repository at /ci/scallops-recipes in your Gitlab instance. 
@@ -168,9 +169,7 @@ If you don't see the Recipes repository, you can import it [manually](https://do
 
 ## Architecture
 
-The framework was built on top of GCP and coded with Terraform scripts.
-
-GCP resources include:
+The included Terraform scripts will deploy the following resources into your GCP project:
 - Compute Engine - Gitlab Instance, managing sources and CI/CD jobs
 - Google Kubernetes Engine (GKE) - K8s cluster to host our CI/CD jobs
   - Linux node pool - For the Gitlab-runners pods, and linux related jobs
@@ -228,6 +227,7 @@ The backup process log is also uploaded to the supplied bucket on every backup.
 
 ## Open issues
 - Windows related containers are **not** built and deployed automatically to your Container Registry. For now, you will have to do it manually. You can use the supplied [Windows Dockerfiles](https://github.com/SygniaLabs/ScallOps-Recipes/tree/main/_ci-maintain/dockerfiles/windows).
+- Windows related containers must include native Powershell Core (PWSH).
 
 
 ## Security Consideration

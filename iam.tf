@@ -48,6 +48,7 @@ resource "google_project_iam_custom_role" "compute_metadata_role" {
 
 # Service account user role binding 
 resource "google_project_iam_member" "sa_binding" {
+  project  = var.project_id
   provider = google.offensive-pipeline
   role     = "roles/iam.serviceAccountUser"
   member   = "serviceAccount:${google_service_account.gitlab_service_account.email}"
@@ -74,6 +75,7 @@ resource "google_storage_bucket_iam_binding" "backup_bucket_binding" {
 
 # Bind the compute metadata role the the service account
 resource "google_project_iam_binding" "compute_binding" {
+  project  = var.project_id
   provider = google.offensive-pipeline
   role     = google_project_iam_custom_role.compute_metadata_role.name
   members  = [

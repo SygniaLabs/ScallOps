@@ -72,8 +72,7 @@ resource "helm_release" "gitlab-runner-linux" {
                 ]
   name       = "linux"
   wait       = false
-  # repository = "https://charts.gitlab.io/gitlab"
-  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.39.0.tgz"
+  chart      = var.runner_chart_url
   
   values     = [
     file("${path.module}/gitlab-runner/linux-values.yaml")
@@ -107,8 +106,7 @@ resource "helm_release" "gitlab-runner-kaniko" {
   name       = "kaniko"
   wait       = false
   namespace  = "sensitive"
-  # repository = "https://charts.gitlab.io/gitlab"
-  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.39.0.tgz"
+  chart      = var.runner_chart_url
   
   values     = [
     file("${path.module}/gitlab-runner/kaniko-values.yaml")
@@ -142,7 +140,7 @@ resource "helm_release" "gitlab-runner-dockerhub" {
   name       = "dockerhub-privates"
   wait       = false
   namespace  = "sensitive"
-  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.39.0.tgz"
+  chart      = var.runner_chart_url
   
   values     = [
     file("${path.module}/gitlab-runner/dockerhub-values.yaml")
@@ -178,8 +176,7 @@ resource "helm_release" "gitlab-runner-win" {
                 ]
   name       = "windows"
   wait       = false
-  # repository = "https://charts.gitlab.io"
-  chart      = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.35.3.tgz"
+  chart      = var.runner_chart_url
   
   values     = [
     file("${path.module}/gitlab-runner/win-values.yaml")

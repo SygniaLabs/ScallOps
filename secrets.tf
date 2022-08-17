@@ -9,7 +9,6 @@ resource "tls_private_key" "gitlab-self-signed-cert-key" {
 }
 
 resource "tls_self_signed_cert" "gitlab-self-signed-cert" {
-  key_algorithm         = "ECDSA"
   private_key_pem       = tls_private_key.gitlab-self-signed-cert-key.private_key_pem
 
   subject {
