@@ -164,14 +164,16 @@ sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_EXTERNAL_URL', value
 sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_HOST', value: '$INSTANCE_INTERNAL_HOSTNAME').save"
 sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_URL', value: '$INSTANCE_INTERNAL_URL').save"
 sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_API_V4_URL', value: '$INSTANCE_INTERNAL_API_V4_URL').save"
-sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'GCP_PROJECT_ID', value: '$GCP_PROJECT_ID').save"
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_NAMESPACE ', value: '$GCP_PROJECT_ID').save"
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_HOST  ', value: 'gcr.io').save"
 
 # Update instance level variables values accroding to the new GCP project and compute hostname
 sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_EXTERNAL_URL').update(value: '$EXTERNAL_URL')"
 sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_SERVER_HOST').update(value: '$INSTANCE_INTERNAL_HOSTNAME')"
 sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_SERVER_URL').update(value: '$INSTANCE_INTERNAL_URL')"
 sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_API_V4_URL').update(value: '$INSTANCE_INTERNAL_API_V4_URL')"
-sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'GCP_PROJECT_ID').update(value: '$GCP_PROJECT_ID')"
+sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_NAMESPACE').update(value: '$GCP_PROJECT_ID')"
+sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_HOST').update(value: 'gcr.io')"
 
 
 # Remove startup script and encrypted backup pwd (prevent from running on reboot)
