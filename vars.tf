@@ -131,7 +131,7 @@ variable "zone" {
 variable "gke_version" {
   description = "Kubernetes engine version"
   type        = string
-  default     = "1.24.2-gke.1900"
+  default     = "1.24.2-gke.1900" # Available version -> https://cloud.google.com/kubernetes-engine/docs/release-notes
 }
 
 variable "gke_linux_pool_version" {

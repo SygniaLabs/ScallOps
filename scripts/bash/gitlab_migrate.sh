@@ -164,8 +164,8 @@ sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_EXTERNAL_URL', value
 sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_HOST', value: '$INSTANCE_INTERNAL_HOSTNAME').save"
 sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_URL', value: '$INSTANCE_INTERNAL_URL').save"
 sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_API_V4_URL', value: '$INSTANCE_INTERNAL_API_V4_URL').save"
-sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_NAMESPACE ', value: '$GCP_PROJECT_ID').save"
-sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_HOST  ', value: 'gcr.io').save"
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_NAMESPACE', value: '$GCP_PROJECT_ID').save"
+sudo gitlab-rails runner "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_HOST', value: 'gcr.io').save"
 
 # Update instance level variables values accroding to the new GCP project and compute hostname
 sudo gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_EXTERNAL_URL').update(value: '$EXTERNAL_URL')"
