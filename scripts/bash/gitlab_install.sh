@@ -30,7 +30,8 @@ INSTANCE_EXTERNAL_DOMAIN=`curl -H "Metadata-Flavor: Google" http://169.254.169.2
 echo "INFO: domain name is $INSTANCE_EXTERNAL_DOMAIN"
 EXTERNAL_IP=`curl -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip`
 echo "INFO: external IP is $EXTERNAL_IP"
-GITLAB_INSTALL_VERSION="15.2.1-ee"
+GITLAB_INSTALL_VERSION=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-version`
+echo "INFO: Installing Gitlab version $GITLAB_INSTALL_VERSION"
 
 ## Secrets variables
 GITLAB_INITIAL_ROOT_PASSWORD_SECRET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-initial-root-pwd-secret`

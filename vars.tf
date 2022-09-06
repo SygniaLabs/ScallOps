@@ -37,6 +37,10 @@ variable "migrate_gitlab_version" {
     type        = string
     description = "The Gitlab full version that you are migrating from e.g. '14.3.3-ee'"
     default     = ""
+    validation {
+        condition     = can(regex("^[0-9]+.[0-9]+.[0-9]+-ee$", var.migrate_gitlab_version))
+        error_message = "Invalid Gitlab version for migration"
+    }
 }
 
 variable "migrate_gitlab_backup_bucket" {
@@ -70,6 +74,17 @@ variable "gitlab_instance_protocol" {
         error_message = "The gitlab_instance_protocol can be either http/https."
     }
 }
+
+variable "gitlab_version" {
+    type        = string
+    description = "Gitlab version to install (e.g. 15.2.1-ee)"
+    default     = "15.2.1-ee"
+    validation {
+        condition     = can(regex("^[0-9]+.[0-9]+.[0-9]+-ee$", var.gitlab_version))
+        error_message = "Invalid Gitlab version"
+    }
+}
+
 
 
 variable "plans" {
@@ -137,13 +152,13 @@ variable "gke_version" {
 variable "gke_linux_pool_version" {
   description = "GKE Linux node pool version"
   type        = string
-  default     = "1.22.10-gke.600"
+  default     = "1.24.2-gke.1900"
 }
 
 variable "gke_windows_pool_version" {
   description = "GKE Windows node pool version"
   type        = string
-  default     = "1.22.10-gke.600"
+  default     = "1.24.2-gke.1900"
 }
 
 variable "runner_chart_url" {
