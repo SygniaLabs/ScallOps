@@ -1,49 +1,63 @@
-#### Required ####
-
-project_id = ""          # GCP Project ID
-infra_name = "scallops"  # The name you wish to have as a prefix for the deployment's resources. Must comply with ^[a-z]([a-z0-9]*[a-z0-9])$
-backups_bucket_name = "" # The name of an existing bucket you wish to receive backups to. Terraform will create the required permission to upload the backup archive.
+##### Scallops IAC variables #####
+#### Note that some variables are required (#Required), and some variables modifications will take effect also after deployment (#PostDeploymentModifiable).
 
 
-#### Optionals ####
-operator_ips = []   # Office IP / home IPs
+## GCP Project ID
+project_id = "" #Required
 
+## The name you wish to have as a prefix for the deployment's resources. Must comply with ^[a-z]([a-z0-9]*[a-z0-9])$
+infra_name = "scallops" #Required
 
-## External DNS ##
-# Uncomment below 3 lines if wishing to supply external DNS name for accessing Gitalb instance
+## The name of an existing bucket you wish to receive backups to. Terraform will create the required permission to upload the backup archive.
+backups_bucket_name = "" #Required #PostDeploymentModifiable
 
-# external_hostname = "scallops.mydomain.com" # Requires re-deploy of the Gitlab instance to be set as external url from Gitlab's perspective. Will also update Certificate ALT names
-# dns_project_id = ""                         # The project ID where the managed DNS zone is located
-# dns_managed_zone_name = "mydomain-com"      # The configured managed DNS zone name
-
-
-## Docker hub credentials ##
-# An existing secret name storing Dockerhub credentials to fetch private container images (format is username:password or username:access-token).
-# Creating Dockerhub access token https://docs.docker.com/docker-hub/access-tokens/
-# Creating a secret through GCP secret manager https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#create
-
-# dockerhub-creds-secret = ""     # Name of the secret in secret-manager
+## An existing secret ID in the same GCP project (project_id) storing a password for the backup process (Allowed symbols for secret value: -_ )
+## Creating a secret through GCP secret manager https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#create
+gitlab_backup_key_secret_id = "" #Required #PostDeploymentModifiable
 
 
 
-## Default deployment values ##
-# Uncommenct and modify only if needed (us-central-1 considered to be the cheapest).
+## Gitlab version to install (e.g. 15.2.1-ee)
+# gitlab_version = "15.2.1-ee" #Optional
 
-# gitlab_instance_protocol = "https"  # The Gitlab instance Web server protocol, http or https.
-# zone = "a"                          # Zone for the k8s cluster, Gitlab instance and network.
-# region = us-central-1               # Region for the k8s cluster, Gitlab instance and network.
+## IP addresses that can interact with the Gitlab instance via HTTP/S (Office IP / Home IPs)
+# operator_ips = [] #Optional #PostDeploymentModifiable
+
+## Enable debugging resources such as IAP Firewall rules, and export of config files
+# debug_flag = false #Optional #PostDeploymentModifiable
+
+## The Gitlab instance Web server protocol, http or https.
+# gitlab_instance_protocol = "https" #Optional
+
+## Region for the k8s cluster, Gitlab instance and network.
+# region = us-central-1 #Optional
+
+## Zone for the k8s cluster, Gitlab instance and network.
+# zone = "a" #Optional
 
 
 
+## External DNS ## #Optional #PostDeploymentModifiable #GitlabRestartRequired
+## Uncomment the 3 lines below if wishing to supply external DNS name for accessing Gitalb instance
 
-## Migration variables ##
-# If you plan on migrating from a different gitlab instance, uncomment all migration variables below, and follow requirements.
-# Requires Gsutil on the terraform deployer system as backup will be downloaded locally
+# dns_project_id = ""                           # The project ID where the managed DNS zone is located
+# dns_managed_zone_name = "mydomain-com"        # The configured managed DNS zone name
+# external_hostname = "scallops.mydomain.com"   # The hostname you wish to set of the instance (Must be subdomain of the managed zone)
+
+
+
+## Docker hub credentials (https://docs.docker.com/docker-hub/access-tokens/) #Optional #PostDeploymentModifiable
+## An existing secret name in secret-manager storing Dockerhub credentials to fetch private container images (format is username:password or username:access-token).
+# dockerhub-creds-secret = ""
+
+
+
+## Migration variables #Optional
+## If you plan on migrating from a different gitlab instance, uncomment all migration variables below, and follow requirements.
+## 1. 'gitlab_backup_key_secret_id' secret must store the password value decrypting the archived backup zip.
+## 2. 'gitlab_version' must be equal to the version you are migrating from.
+## 3. Operation requires Gsutil on the terraform deployer system as backup will be downloaded locally
 
 # migrate_gitlab = true                   ## If performing migration from another Gitlab instance and got a backup file from previous instance. true/false.
-# migrate_gitlab_version = ""             ## The Gitlab full version that you are migrating from e.g. '14.3.3-ee'
 # migrate_gitlab_backup_bucket = ""       ## The Google Storage Bucket to your Gitlab backup e.g. 'mybucket1-abcd'
 # migrate_gitlab_backup_path = ""         ## The path to the archived backup zip e.g 'backups/gitlab-xxx-backup.zip'
-# migrate_gitlab_backup_password = ""     ## The password value decrypting the archived backup zip
-
-## ### ### ### ####
