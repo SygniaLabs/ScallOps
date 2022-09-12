@@ -14,7 +14,8 @@ resource "google_compute_instance" "gitlab" {
                   google_secret_manager_secret_iam_binding.gitlab-self-crt-binding,
                   google_secret_manager_secret_iam_binding.gitlab_runner_registration_token,
                   google_secret_manager_secret_iam_binding.gitlab_initial_root_pwd,
-                  google_secret_manager_secret_iam_binding.gitlab_backup_key
+                  google_secret_manager_secret_iam_binding.gitlab_backup_key,
+                  null_resource.transfer_gitlab_backup[0]
                   ]
   provider     = google.offensive-pipeline
   name         = "${var.infra_name}-gitlab"

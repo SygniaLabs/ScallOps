@@ -13,6 +13,7 @@ resource "google_storage_bucket" "deployment_utils" {
   storage_class               = "STANDARD"
   uniform_bucket_level_access = true
   provider                    = google.offensive-pipeline
+  force_destroy = true
 }
 
 
