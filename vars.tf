@@ -25,6 +25,12 @@ variable "backups_bucket_name" {
     description = "The name of the bucket backups are stored. Bucket must exist before apply. Terrafrom will add objectCreator permission to the gitlab svc account."
 }
 
+variable "gitlab_backup_key_secret_id" {
+  description = "An existing secret ID in the same GCP project (project_id) storing a password for the backup process (Allowed symbols: -_ )"
+  type        = string
+  default     = ""
+}
+
 # Migration variables 
 variable "migrate_gitlab" {
     type        = bool
@@ -32,16 +38,6 @@ variable "migrate_gitlab" {
     default     = false
 }
 
-
-variable "migrate_gitlab_version" {
-    type        = string
-    description = "The Gitlab full version that you are migrating from e.g. '14.3.3-ee'"
-    default     = ""
-    validation {
-        condition     = can(regex("^[0-9]+.[0-9]+.[0-9]+-ee$", var.migrate_gitlab_version))
-        error_message = "Invalid Gitlab version for migration"
-    }
-}
 
 variable "migrate_gitlab_backup_bucket" {
     type        = string
@@ -55,12 +51,6 @@ variable "migrate_gitlab_backup_path" {
     default     = ""
 }
 
-variable "migrate_gitlab_backup_password" {
-    type        = string
-    description = "The password value decrypting the archived backup zip"
-    default     = ""
-    sensitive   = true
-}
 
 
 # Gitlab instance related variables
@@ -77,7 +67,7 @@ variable "gitlab_instance_protocol" {
 
 variable "gitlab_version" {
     type        = string
-    description = "Gitlab version to install (e.g. 15.2.1-ee)"
+    description = "Gitlab version to install (e.g. 15.2.1-ee). If performing migration, you must specify the Gitlab backup version from the previous instance"
     default     = "15.2.1-ee"
     validation {
         condition     = can(regex("^[0-9]+.[0-9]+.[0-9]+-ee$", var.gitlab_version))
@@ -191,4 +181,10 @@ variable "dockerhub-creds-secret" {
   description = "An existing secret name in the same GCP project storing the Dockerhub credentials (username:password)"
   type        = string
   default     = ""
+}
+
+variable "debug_flag" {
+    type        = bool
+    description = "Enable debugging resources such as IAP Firewall rules, and export of config files"
+    default     = false
 }

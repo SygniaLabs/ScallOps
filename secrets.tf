@@ -92,11 +92,6 @@ resource "random_password" "gitlab_initial_root_pwd" {
   override_special = "-_"
 }
 
-resource "random_password" "gitlab_backup_key" {
-  length           = 24
-  special          = true
-  override_special = "-_"
-}
 
 # Gitlab runner registration token
 
@@ -142,30 +137,6 @@ resource "google_secret_manager_secret" "gitlab_initial_root_pwd" {
 resource "google_secret_manager_secret_version" "gitlab_initial_root_pwd" {
   secret      = google_secret_manager_secret.gitlab_initial_root_pwd.id
   secret_data = random_password.gitlab_initial_root_pwd.result
-}
-
-
-# Gitlab backup archives password
-
-resource "google_secret_manager_secret" "gitlab_backup_key" {
-  provider   = google.offensive-pipeline
-  secret_id  = "${var.infra_name}-gitlab-backup-key"
-  labels     = {
-          label = "gitlab"
-  }
-  replication {
-    user_managed {
-          replicas {
-            location = var.region
-      }
-    }
-  }
-}
-
-
-resource "google_secret_manager_secret_version" "gitlab_backup_key" {
-  secret      = google_secret_manager_secret.gitlab_backup_key.id
-  secret_data = random_password.gitlab_backup_key.result
 }
 
 

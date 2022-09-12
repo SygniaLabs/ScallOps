@@ -6,6 +6,15 @@ resource "google_compute_instance" "gitlab" {
                   google_secret_manager_secret_version.gitlab-self-signed-cert-key-version,
                   google_secret_manager_secret_version.gitlab_initial_root_pwd,
                   google_secret_manager_secret_version.gitlab_runner_registration_token,
+                  # Compute instance doesn't wait for any binding related to the service account to complete. These are required for the startup scripts
+                  google_storage_bucket_iam_binding.binding,
+                  google_project_iam_binding.compute_binding,
+                  google_storage_bucket_iam_binding.backup_bucket_binding,
+                  google_secret_manager_secret_iam_binding.gitlab-self-key-binding,
+                  google_secret_manager_secret_iam_binding.gitlab-self-crt-binding,
+                  google_secret_manager_secret_iam_binding.gitlab_runner_registration_token,
+                  google_secret_manager_secret_iam_binding.gitlab_initial_root_pwd,
+                  google_secret_manager_secret_iam_binding.gitlab_backup_key
                   ]
   provider     = google.offensive-pipeline
   name         = "${var.infra_name}-gitlab"
@@ -35,28 +44,18 @@ resource "google_compute_instance" "gitlab" {
 
   metadata = {
     gcs-prefix                                 = "gs://${google_storage_bucket.deployment_utils.name}"
-    # Migrate vars Start #
-    migrated-gitlab-backup-password            = var.migrate_gitlab ? var.migrate_gitlab_backup_password : ""
-    gcs-path-to-backup                         = var.migrate_gitlab ? local.gitlab_migrate_backup : ""
-    migrated-gitlab-version                    = var.migrate_gitlab ? var.migrate_gitlab_version : ""
-    # Migrate vars End #
-    startup-script-url                         = var.migrate_gitlab ? local.gitlab_migrate_script : local.gitlab_install_script
+    gcs-path-to-backup                         = var.migrate_gitlab ? local.gitlab_migrate_backup : "NONE" # Migration var
+    startup-script-url                         = local.gitlab_startup_script
     instance-external-domain                   = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
     instance-protocol                          = var.gitlab_instance_protocol
     gitlab-initial-root-pwd-secret             = google_secret_manager_secret.gitlab_initial_root_pwd.secret_id
     gitlab-cert-key-secret                     = google_secret_manager_secret.gitlab-self-signed-cert-key.secret_id
     gitlab-cert-public-secret	                 = google_secret_manager_secret.gitlab-self-signed-cert-crt.secret_id
     gitlab-ci-runner-registration-token-secret = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
-    gitlab-backup-key-secret                   = google_secret_manager_secret.gitlab_backup_key.secret_id
+    gitlab-backup-key-secret                   = var.gitlab_backup_key_secret_id
     gitlab-backup-bucket-name                  = var.backups_bucket_name
     gitlab-version                             = var.gitlab_version
   }
-lifecycle {
-    ignore_changes = [
-        metadata,
-    ]
-  }
-
 }
 
 
@@ -67,10 +66,7 @@ lifecycle {
 
 
 resource "helm_release" "gitlab-runner-linux" {
-  depends_on = [
-                module.gke,
-                module.gke_auth
-                ]
+  depends_on = [module.gke.google_container_node_pool]
   name       = "linux"
   wait       = false
   chart      = var.runner_chart_url
@@ -99,11 +95,7 @@ resource "helm_release" "gitlab-runner-linux" {
 
 
 resource "helm_release" "gitlab-runner-kaniko" {
-  depends_on = [
-                module.gke,
-                module.gke_auth,
-                kubernetes_namespace.sensitive-namespace
-                ]
+  depends_on = [kubernetes_namespace.sensitive-namespace]
   name       = "kaniko"
   wait       = false
   namespace  = "sensitive"
@@ -133,11 +125,7 @@ resource "helm_release" "gitlab-runner-kaniko" {
 
 resource "helm_release" "gitlab-runner-dockerhub" {
   count  = var.dockerhub-creds-secret != "" ? 1 : 0  
-  depends_on = [
-                module.gke,
-                module.gke_auth,
-                kubernetes_namespace.sensitive-namespace
-                ]
+  depends_on = [kubernetes_namespace.sensitive-namespace]
   name       = "dockerhub-privates"
   wait       = false
   namespace  = "sensitive"
@@ -171,10 +159,7 @@ resource "helm_release" "gitlab-runner-dockerhub" {
 
 
 resource "helm_release" "gitlab-runner-win" {
-  depends_on = [
-                module.gke,
-                module.gke_auth
-                ]
+  depends_on = [module.gke.google_container_node_pool]
   name       = "windows"
   wait       = false
   chart      = var.runner_chart_url
