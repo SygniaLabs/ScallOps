@@ -7,12 +7,12 @@ check_installation () {
     GILAB_VERSION_FILE=/opt/gitlab/version-manifest.txt
     GITLAB_INSTALLED="false"
     if [ -f "$GILAB_VERSION_FILE" ]; then
-        logger $logName "INFO" "$GILAB_VERSION_FILE exists"
+        logger $logName "DEBUG" "$GILAB_VERSION_FILE exists"
         GITLAB_INSTALLED="true"
         GITLAB_EE_VERSION=$(grep gitlab-ee $GILAB_VERSION_FILE | cut -d " " -f2)-ee
         logger $logName "INFO" "Installed Gitlab version is $GITLAB_EE_VERSION"
     else         
-        logger $logName "INFO" "$GILAB_VERSION_FILE does not exist"
+        logger $logName "DEBUG" "$GILAB_VERSION_FILE does not exist"
     fi
 }
 
@@ -20,10 +20,12 @@ check_installation () {
 gitlab_depsInstall () {
     local logName=$1
     # Install Dependencies
-    logger $logName "INFO" "Running package updater apt-get update"
-    apt-get update
+    logger $logName "INFO" "Running package updater apt-get update"   
+    errMsg=$(apt-get update 2>&1)
+    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
     logger $logName "INFO" "Installing the following packages curl ca-certificates tzdata perl jq coreutils zip p7zip-full"
-    apt-get install -y curl ca-certificates tzdata perl jq coreutils zip p7zip-full
+    errMsg=$(apt-get install -y curl ca-certificates tzdata perl jq coreutils zip p7zip-full 2>&1)
+    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
 }
 
 
@@ -59,13 +61,19 @@ reconfigure_gitlab () {
 
     logger $logName "INFO" "Setting Gitlab external url to $EXTERNAL_URL"
     echo "external_url \"$EXTERNAL_URL\"" >> /etc/gitlab/gitlab.rb
-    logger $logName "INFO" "Updating EXTERNAL URL to CI_EXTERNAL_URL CI/CD variable"
-    gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_EXTERNAL_URL').update(value: '$EXTERNAL_URL')"
 
     # Reconfigure installation
     logger $logName "INFO" "Reconfiguring Gitlab"
-    gitlab-ctl reconfigure
-    gitlab-ctl restart
+    
+    errMsg=$(gitlab-ctl reconfigure 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    
+    errMsg=$(gitlab-ctl restart 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"
+
+    logger $logName "INFO" "Updating EXTERNAL URL to CI_EXTERNAL_URL CI/CD variable"
+    errMsg=$(gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_EXTERNAL_URL').update(value: '$EXTERNAL_URL')" 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
 }
 
 
@@ -76,16 +84,19 @@ gitlab_install () {
     logger $logName "INFO" "Starting postfix installation for domain: $INSTANCE_EXTERNAL_DOMAIN"
     debconf-set-selections <<< "postfix postfix/mailname string $INSTANCE_EXTERNAL_DOMAIN"
     debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
-    apt-get install --assume-yes postfix
+    errMsg=$(apt-get install --assume-yes postfix 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
 
     # Install Gitlab Server
     logger $logName "INFO" "Setting up Gitlab installation at version $gitlabVersion"
     curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.deb.sh | bash
     #Specific version installation:
     logger $logName "INFO" "Downloading Gitlab from https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$gitlabVersion.0_amd64.deb/download.deb"
-    wget --content-disposition https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$gitlabVersion.0_amd64.deb/download.deb
+    errMsg=$(wget --content-disposition https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$gitlabVersion.0_amd64.deb/download.deb 2>&1)
+    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
     logger $logName "INFO" "Installing Gitlab"
-    dpkg -i gitlab-ee_$gitlabVersion.0_amd64.deb
+    errMsg=$(dpkg -i gitlab-ee_$gitlabVersion.0_amd64.deb 2>&1)
+    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
 }
 
 
@@ -187,12 +198,12 @@ setup_gitlab_backup () {
     local gcsPrefix=$2
     # Download backup cron executor and cron job #Backup will occur every Saturday on 10:00 UTC
     logger $logName "INFO" "Setting up backup procedure with crontab"
-    gsutil cp $gcsPrefix/scripts/bash/gitlab_backup_exec.sh /gitlab_backup_exec.sh
+    errMsg=$(gsutil cp $gcsPrefix/scripts/bash/gitlab_backup_exec.sh /gitlab_backup_exec.sh 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
     chmod +x /gitlab_backup_exec.sh
     echo "0 10 * * 6 /gitlab_backup_exec.sh" > gitlab-backup-cron
-    local dbgMsg=$(cat gitlab-backup-cron)
-    logger $logName "DEBUG" $dbgMsg
-    crontab gitlab-backup-cron
+    errMsg=$(crontab gitlab-backup-cron 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
     rm gitlab-backup-cron
 }
 
@@ -205,7 +216,8 @@ get_backup_archive () {
 
     # Download backup
     logger $logName "INFO" "Downloading backup from $gcsPathToBackup"
-    gsutil cp $gcsPathToBackup $backupArchivePath
+    errMsg=$(gsutil cp $gcsPathToBackup $backupArchivePath 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
 
 }
 
@@ -218,6 +230,7 @@ get_backup_archive_password () {
     GITLAB_BACKUP_PASSWORD_SECRET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-backup-key-secret`
     logger $logName "INFO" "Reading password for the backup archive from secret - $GITLAB_BACKUP_PASSWORD_SECRET"
     GITLAB_BACKUP_PASSWORD=`gcloud secrets versions access latest --secret=$GITLAB_BACKUP_PASSWORD_SECRET`
+    logger $logName "DEBUG" "Fetched password with length of ${#GITLAB_BACKUP_PASSWORD} characters"
 }
 
 
@@ -231,7 +244,9 @@ restore_backup () {
     mkdir -p $backupDir
 
     logger $logName "INFO" "Extracting backup from $backupArchivePath to $backupDir"
-    7z x -p$GITLAB_BACKUP_PASSWORD $backupArchivePath -o./$backupDir
+    errMsg=$(7z x -p$GITLAB_BACKUP_PASSWORD $backupArchivePath -o./$backupDir 2>&1)
+    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
+
 
     logger $logName "INFO" "Copying configuration files and certificates from $backupDir"
     cp $backupDir/gitlab* /etc/gitlab
@@ -255,15 +270,25 @@ restore_backup () {
     chown git:git /var/opt/gitlab/backups/$backupFileName
 
     logger $logName "INFO" "Restoring from backup snapshot... $backupFileName"
-    yes yes | gitlab-rake gitlab:backup:restore BACKUP=$(echo $backupFileName | cut -d "_" -f 1-5)
+    local restoreBackupName=$(echo $backupFileName | cut -d "_" -f 1-5)
+    errMsg=$(yes yes | gitlab-rake gitlab:backup:restore BACKUP=$restoreBackupName 2>&1)
+    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
+    
     logger $logName "INFO" "Reconfiguring Gitlab"
-    gitlab-ctl reconfigure
+    errMsg=$(gitlab-ctl reconfigure 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    
     logger $logName "INFO" "Restarting Gitlab services"
-    gitlab-ctl restart
+    errMsg=$(gitlab-ctl restart 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    
     logger $logName "INFO" "Checking Gitlab services health"
-    gitlab-rake gitlab:check SANITIZE=true
+    errMsg=$(gitlab-rake gitlab:check SANITIZE=true 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    
     logger $logName "INFO" "Checking secrets decryptability"    
-    gitlab-rake gitlab:doctor:secrets
+    errMsg=$(gitlab-rake gitlab:doctor:secrets 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
 }
 
 
@@ -278,72 +303,74 @@ execute_backup () {
     local timestamp=`date +"%s"`
     local backupDir="backup-$timestamp"
     local backupArchiveFile="$instanceName-$gitlabVersion-$backupDir.zip"
-    local backupLogFile="$instanceName-$gitlabVersion-$backupDir.log"
    
 
-    echo "INFO: Starting backup - $timestamp" >> $backupLogFile
     logger $logName "INFO" "Starting Gitlab backup for $instanceName"
 
     # Create backup folder
     mkdir -p $backupDir
 
     # Stop Gitlab services
-    echo "INFO: Stopping Gitlab services (unicorn, sidekiq, puma)..." >> $backupLogFile
     logger $logName "INFO" "Stopping Gitlab services (unicorn, sidekiq, puma)"
-    gitlab-ctl stop unicorn >> $backupLogFile
-    gitlab-ctl stop sidekiq >> $backupLogFile
-    gitlab-ctl stop puma >> $backupLogFile
+    gitlab-ctl stop unicorn
+    gitlab-ctl stop sidekiq
+    gitlab-ctl stop puma
 
     # Create back up TAR
-    echo "INFO: Creaing backup tar file" >> $backupLogFile
     logger $logName "INFO" "Creaing backup tar file"
-    gitlab-backup create >> $backupLogFile
+    errMsg=$(gitlab-backup create 2>&1)
+    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
 
     # Restart Gitlab services back
-    echo "INFO: Restarting gitlab services" >> $backupLogFile
     logger $logName "INFO" "Restarting gitlab services"
-    gitlab-ctl restart >> $backupLogFile
+    errMsg=$(gitlab-ctl restart 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
 
     # Copy DB backup and configurations
-    echo "INFO: Locating latest backup tar..." >> $backupLogFile
     local mostRecentBackupName=`ls -t /var/opt/gitlab/backups/ | head -1`
-    echo "INFO: Using backup: $mostRecentBackupName" >> $backupLogFile
     logger $logName "INFO" "Using backup: $mostRecentBackupName"
 
-    echo "INFO: Copying DB backup, gitlab configurations and SSL ceritficates" >> $backupLogFile
     logger $logName "INFO" "Copying DB backup, gitlab configurations and SSL ceritficates"
-    cp /var/opt/gitlab/backups/$mostRecentBackupName $backupDir/  >> $backupLogFile
-    cp /etc/gitlab/gitlab.rb $backupDir/ >> $backupLogFile
-    cp /etc/gitlab/gitlab-secrets.json $backupDir/ >> $backupLogFile
-    cp -R /etc/gitlab/ssl/ $backupDir/ >> $backupLogFile
+    cp /var/opt/gitlab/backups/$mostRecentBackupName $backupDir/
+    cp /etc/gitlab/gitlab.rb $backupDir/
+    cp /etc/gitlab/gitlab-secrets.json $backupDir/
+    cp -R /etc/gitlab/ssl/ $backupDir/
 
     # Get the backup bucket name
-    echo "INFO: Fetching backup target bucket" >> $backupLogFile
     logger $logName "INFO" "Getting backup bucket name from instance metadata"
     GITLAB_BACKUPS_BUCKET_NAME=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-backup-bucket-name`
 
 
     # Archive and encrypt backup
-    echo "INFO: Archiving and encrypting backup..." >> $backupLogFile
     logger $logName "INFO" "Archiving and encrypting backup"
-    7z a -p$GITLAB_BACKUP_PASSWORD $backupDir.zip ./$backupDir/*  >> $backupLogFile
+    errMsg=$(7z a -p$GITLAB_BACKUP_PASSWORD $backupDir.zip ./$backupDir/* 2>&1)
+    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
 
     # Upload archived backup
-    echo "INFO: Uploading backup as: gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupArchiveFile" >> $backupLogFile
     logger $logName "INFO" "Uploading backup as: gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupArchiveFile"
-    gsutil cp $backupDir.zip gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupArchiveFile >> $backupLogFile
+    errMsg=$(gsutil cp $backupDir.zip gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupArchiveFile 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
 
 
     # Delete source directory and backup archive
-    echo "INFO: Deleting processed files..." >> $backupLogFile
     logger $logName "INFO" "Deleting processed files"
     rm -r $backupDir
     rm $backupDir.zip
 
-    ls -la >> $backupLogFile
-    echo "INFO: Backup completed!" >> $backupLogFile
-    logger $logName "INFO" "Uploading backup log file as gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupLogFile"
-    gsutil cp $backupLogFile gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupLogFile
-    yes | rm $backupLogFile
     logger $logName "INFO" "Gitlab backup completed"
+}
+
+
+get_last_error () {	
+	local logName=$1
+	local errCode=$2
+	local errAction=$3
+	local errMsg=$4
+	if [ $errCode -ne 0 ]; then
+		logger $logName "ERROR" "ErrCode: $errCode, ErrAction: $errAction,  Message: $errMsg"
+		if [ $errAction == $ERR_ACTION_EXIT ]; then
+			logger $logName "INFO" "Stopping execution due to error"
+			exit 1
+		fi
+	fi
 }

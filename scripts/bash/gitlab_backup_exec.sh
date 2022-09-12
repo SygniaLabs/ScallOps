@@ -5,6 +5,8 @@ PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
 #Imports
 DEPLOYMENT_GCS_PREFIX=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gcs-prefix`
 GCLOUD_LOG_NAME="gitlab-backup-exec"
+ERR_ACTION_EXIT="Exit"
+ERR_ACTION_CONT="Continue"
 
 gsutil cp $DEPLOYMENT_GCS_PREFIX/scripts/bash/gcloud_logger.sh ./
 source ./gcloud_logger.sh
@@ -15,7 +17,7 @@ source ./gitlab_helpers.sh
 
 check_installation $GCLOUD_LOG_NAME
 
-if [ "$GITLAB_INSTALLED" == 'true' ]; then
+if [ $GITLAB_INSTALLED == 'true' ]; then
     logger $GCLOUD_LOG_NAME "INFO" "Executing gitlab backup"
     get_backup_archive_password $GCLOUD_LOG_NAME
     execute_backup $GCLOUD_LOG_NAME $GITLAB_EE_VERSION

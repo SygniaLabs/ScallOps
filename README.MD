@@ -251,8 +251,7 @@ The encrypted archive contains the following components:
 * ssl/hostname.key (SSL certificate private key belonging to the existing hostname)
 * ssl/hostname.cer (SSL public certificate file belonging to the existing hostname)
 
-The backup process log is also uploaded to the supplied bucket on every backup.
-Another [GCP log](https://cloud.google.com/logging/docs/view/logs-explorer-interface) named "gitlab-backup-exec" is created during this process.
+The backup process log is casted to a [GCP log](https://cloud.google.com/logging/docs/view/logs-explorer-interface) named "gitlab-backup-exec".
 
 *Note that this backup structure works with the deployment migration capability.
 

@@ -11,9 +11,11 @@
 DEPLOYMENT_GCS_PREFIX=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gcs-prefix`
 GITLAB_INSTALL_VERSION=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-version`
 GCS_PATH_TO_BACKUP=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gcs-path-to-backup`
-GCLOUD_LOG_NAME="gitlab-setup"
+GCLOUD_LOG_NAME="gitlab-startup"
 SCALLOPS_RECIPES_GIT_URL="https://github.com/SygniaLabs/ScallOps-Recipes.git"
 BACKUP_ARCHIVE_PATH="/tmp/backup_archived.zip"
+ERR_ACTION_EXIT="Exit"
+ERR_ACTION_CONT="Continue"
 
 #Imports
 gsutil cp $DEPLOYMENT_GCS_PREFIX/scripts/bash/gitlab_helpers.sh ./
@@ -27,13 +29,13 @@ logger $GCLOUD_LOG_NAME "INFO" "Starting Gitlab instance setup"
 set_gitlabVars $GCLOUD_LOG_NAME
 check_installation $GCLOUD_LOG_NAME
 
-if [ "$GITLAB_INSTALLED" == 'false' ]; then
+if [ $GITLAB_INSTALLED == 'false' ]; then
     logger $GCLOUD_LOG_NAME "INFO" "Starting Gitlab installation"
     gitlab_depsInstall $GCLOUD_LOG_NAME 
     gitlab_install $GCLOUD_LOG_NAME $GITLAB_INSTALL_VERSION
     setup_cicd_vars $GCLOUD_LOG_NAME
 
-    if [ "$GCS_PATH_TO_BACKUP" == 'NONE']; then
+    if [ $GCS_PATH_TO_BACKUP == 'NONE' ]; then
         create_groups $GCLOUD_LOG_NAME
         import_scallopsRecipes $GCLOUD_LOG_NAME $SCALLOPS_RECIPES_GIT_URL
         create_cicd_vars $GCLOUD_LOG_NAME
@@ -45,8 +47,6 @@ if [ "$GITLAB_INSTALLED" == 'false' ]; then
         restore_backup $GCLOUD_LOG_NAME $BACKUP_ARCHIVE_PATH
         update_cicd_vars $GCLOUD_LOG_NAME
     fi
-
-    sleep 20 # Short delay
 
     seed_instance_reg_token $GCLOUD_LOG_NAME
     seed_gitlab_root_pwd $GCLOUD_LOG_NAME
