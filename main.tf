@@ -2,6 +2,9 @@
 
 resource "google_compute_instance" "gitlab" {
   depends_on   = [
+                  # If migrating we have to wait for the backup to upload
+                  null_resource.transfer_gitlab_backup[0],
+                  # Need to wait for the secrets' values to take place in the secrets objects
                   google_secret_manager_secret_version.gitlab-self-signed-cert-crt-version,
                   google_secret_manager_secret_version.gitlab-self-signed-cert-key-version,
                   google_secret_manager_secret_version.gitlab_initial_root_pwd,
@@ -15,7 +18,7 @@ resource "google_compute_instance" "gitlab" {
                   google_secret_manager_secret_iam_binding.gitlab_runner_registration_token,
                   google_secret_manager_secret_iam_binding.gitlab_initial_root_pwd,
                   google_secret_manager_secret_iam_binding.gitlab_backup_key,
-                  null_resource.transfer_gitlab_backup[0]
+                  google_secret_manager_secret_iam_binding.git_creds
                   ]
   provider     = google.offensive-pipeline
   name         = "${var.infra_name}-gitlab"
@@ -56,6 +59,8 @@ resource "google_compute_instance" "gitlab" {
     gitlab-backup-key-secret                   = var.gitlab_backup_key_secret_id
     gitlab-backup-bucket-name                  = var.backups_bucket_name
     gitlab-version                             = var.gitlab_version
+    scallops-recipes-git-url                   = var.scallops_recipes_git_url
+    scallops-recipes-git-creds-secret          = var.scallops_recipes_git_creds_secret != "" ? var.scallops_recipes_git_creds_secret : "NONE"
   }
 }
 

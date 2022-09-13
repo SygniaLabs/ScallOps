@@ -96,7 +96,11 @@ gitlab_install () {
     get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
     logger $logName "INFO" "Installing Gitlab"
     errMsg=$(dpkg -i gitlab-ee_$gitlabVersion.0_amd64.deb 2>&1)
-    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
+    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg"
+    
+    logger $logName "INFO" "Reconfiguring Gitlab"
+    errMsg=$(gitlab-ctl reconfigure 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"     
 }
 
 
@@ -148,7 +152,8 @@ seed_instance_reg_token () {
     logger $logName "INFO" "Reading shared runners registration token from secret $GITLAB_RUNNER_REG_SECRET"    
     GITLAB_RUNNER_REG=`gcloud secrets versions access latest --secret=$GITLAB_RUNNER_REG_SECRET`
     logger $logName "INFO" "Seeding shared runners registration token"
-    gitlab-rails runner "appset = Gitlab::CurrentSettings.current_application_settings; appset.set_runners_registration_token('$GITLAB_RUNNER_REG'); appset.save!"
+    errMsg=$(gitlab-rails runner "appset = Gitlab::CurrentSettings.current_application_settings; appset.set_runners_registration_token('$GITLAB_RUNNER_REG'); appset.save!" 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
 }
 
 
@@ -159,7 +164,8 @@ seed_gitlab_root_pwd () {
     logger $logName "INFO" "Reading gitlab root password from secret $GITLAB_INITIAL_ROOT_PASSWORD_SECRET"
     GITLAB_INITIAL_ROOT_PASSWORD=`gcloud secrets versions access latest --secret=$GITLAB_INITIAL_ROOT_PASSWORD_SECRET`
     logger $logName "INFO" "Seeding gitlab root password"
-    gitlab-rails runner "user = User.find_by_username('root'); user.password = '$GITLAB_INITIAL_ROOT_PASSWORD'; user.password_confirmation = '$GITLAB_INITIAL_ROOT_PASSWORD'; user.save!"
+    errMsg=$(gitlab-rails runner "user = User.find_by_username('root'); user.password = '$GITLAB_INITIAL_ROOT_PASSWORD'; user.password_confirmation = '$GITLAB_INITIAL_ROOT_PASSWORD'; user.save!" 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"
 }
 
 
@@ -168,17 +174,28 @@ create_groups () {
     local logName=$1
     # Create repo groups (ci, community, private)
     logger $logName "INFO" "Creating groups: ci, community, private"
-    gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'CI CD Tools', path: 'ci', visibility_level: 10}).execute"
-    gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'Community Tools', path: 'community', visibility_level: 10}).execute"
-    gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'Private Tools', path: 'private', visibility_level: 10}).execute"
+    errMsg=$(gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'CI CD Tools', path: 'ci', visibility_level: 10}).execute" 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"
+    errMsg=$(gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'Community Tools', path: 'community', visibility_level: 10}).execute" 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"
+    errMsg=$(gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'Private Tools', path: 'private', visibility_level: 10}).execute" 2>&1)
+    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"
 }
 
 
 import_scallopsRecipes () {
     local logName=$1
     # Import SCALLOPS-RECIPES project repo
-    logger $logName "INFO" "Import SCALLOPS-RECIPES repo from $2 to ci group"
-    gitlab-rails runner "cigrp = Group.find_by_path_or_name('ci'); rootuser = User.find_by_id(1); Project.new(import_url: '$2', name: 'Scallops Recipes', path: 'scallops-recipes', visibility_level: 10, creator: rootuser, namespace: cigrp).save"
+    SCALLOPS_RECIPES_GIT_URL=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/scallops-recipes-git-url`
+    local gitCredsSecretName=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/scallops-recipes-git-creds-secret`
+    logger $logName "INFO" "Importing SCALLOPS-RECIPES repo from $SCALLOPS_RECIPES_GIT_URL to ci group"
+
+	if [ $gitCredsSecretName != 'NONE' ]; then
+		logger $logName "INFO" "Reading Git credentials from secret $gitCredsSecretName to import $SCALLOPS_RECIPES_GIT_URL repository"
+        local gitCreds=`gcloud secrets versions access latest --secret=$gitCredsSecretName`
+        SCALLOPS_RECIPES_GIT_URL="https://$gitCreds@${SCALLOPS_RECIPES_GIT_URL:8}"
+	fi    
+    gitlab-rails runner "cigrp = Group.find_by_path_or_name('ci'); rootuser = User.find_by_id(1); Project.new(import_url: '$SCALLOPS_RECIPES_GIT_URL', name: 'Scallops Recipes', path: 'scallops-recipes', visibility_level: 10, creator: rootuser, namespace: cigrp).save"
     gitlab-rails runner "newprj = Project.find_by_full_path('ci/scallops-recipes'); Gitlab::GithubImport::Importer::RepositoryImporter.new(newprj, :octokit).execute" # Ignore the following error (undefined method `repository' for :octokit:Symbol)
 }
 

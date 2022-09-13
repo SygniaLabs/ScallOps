@@ -75,8 +75,6 @@ variable "gitlab_version" {
     }
 }
 
-
-
 variable "plans" {
   type    = map
   default = {
@@ -88,7 +86,6 @@ variable "size" {
     type    = string
     default = "2x8"
 }
-
 
 variable "osimages" {
   type       = map
@@ -103,6 +100,17 @@ variable "osimage" {
   default     = "ubuntu"
 }
 
+variable "scallops_recipes_git_url" {
+  type        = string
+  description = "Scallops-Recipes repository. Git URL must be provided in the following format: https://<DOMAIN>/<NAMESPACE>/<Repository>.git"
+  default     = "https://github.com/SygniaLabs/ScallOps-Recipes.git"
+}
+
+variable "scallops_recipes_git_creds_secret" {
+  type        = string
+  description = "A secret in the same project (project_id) storing Git credentials to access the provided scallops-recipes repository. Format is <user>:<access-token> or <access-token>."
+  default     = ""
+}
 
 # Networking and region related variables
 

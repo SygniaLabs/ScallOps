@@ -51,6 +51,13 @@ gitlab_backup_key_secret_id = "" #Required #PostDeploymentModifiable
 # dockerhub-creds-secret = ""
 
 
+## Scallops-Recipes repository. Use the default repository or specify alternative fork in a Git path HTTPS format.
+## The specified repository will be imported to Gitlab as the Scallops-Recipes repository.
+## *Ignored if performing a migration
+# scallops_recipes_git_url = "https://github.com/SygniaLabs/ScallOps-Recipes.git" #Optional
+# scallops_recipes_git_creds_secret = "my-github-creds-secret" #Optional
+
+
 
 ## Migration variables #Optional
 ## If you plan on migrating from a different gitlab instance, uncomment all migration variables below, and follow requirements.

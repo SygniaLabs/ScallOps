@@ -152,3 +152,13 @@ resource "google_secret_manager_secret_iam_binding" "gitlab_backup_key" {
     "serviceAccount:${google_service_account.gitlab_service_account.email}",
   ]
 }
+
+resource "google_secret_manager_secret_iam_binding" "git_creds" {
+  count      = var.scallops_recipes_git_creds_secret != "" ? 1 : 0  
+  project    = var.project_id
+  secret_id  = var.scallops_recipes_git_creds_secret
+  role       = "roles/secretmanager.secretAccessor"
+  members    = [
+    "serviceAccount:${google_service_account.gitlab_service_account.email}",
+  ]
+}
