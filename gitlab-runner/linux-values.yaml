@@ -2,14 +2,14 @@ rbac:
  create: true
  rules:
  - apiGroups: [""]
-   resources: ["pods", "secrets", "configmaps"]
-   verbs: ["get", "list", "watch", "create", "patch", "delete", "update"]
- - apiGroups: [""]
-   resources: ["pods/exec", "pods/attach"]
+   resources: ["pods/attach","pods/exec"]
    verbs: ["create", "patch", "delete"]
  - apiGroups: [""]
-   resources: ["pods/log"]
-   verbs: ["get"]
+   resources: ["pods","services"]
+   verbs: ["get","watch","create", "delete"]
+ - apiGroups: [""]
+   resources: ["configmaps","secrets"]
+   verbs: ["get","create","update","delete"]
 
 runners:
   tags: "linux,kubernetes"
