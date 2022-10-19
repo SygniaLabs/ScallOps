@@ -18,7 +18,7 @@ source ./gitlab_helpers.sh
 check_installation $GCLOUD_LOG_NAME
 
 if [ $GITLAB_INSTALLED == 'true' ]; then
-    logger $GCLOUD_LOG_NAME "INFO" "Executing gitlab backup"
+    logger $GCLOUD_LOG_NAME "INFO" "Performing gitlab backup"
     get_backup_archive_password $GCLOUD_LOG_NAME
     execute_backup $GCLOUD_LOG_NAME $GITLAB_EE_VERSION
 

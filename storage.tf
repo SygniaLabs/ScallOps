@@ -13,7 +13,7 @@ resource "google_storage_bucket" "deployment_utils" {
   storage_class               = "STANDARD"
   uniform_bucket_level_access = true
   provider                    = google.offensive-pipeline
-  force_destroy = true
+  force_destroy               = true
 }
 
 
@@ -29,9 +29,9 @@ resource "google_storage_bucket_object" "gitlab_startup_script" {
                   google_storage_bucket_object.gitlab_helpers_script,
                   google_storage_bucket_object.gcloud_logger_script,
                   google_storage_bucket_object.gitlab_backup_script_exec]
-  name   = "scripts/bash/gitlab_startup.sh"
-  bucket = google_storage_bucket.deployment_utils.name
-  source = "${path.module}/scripts/bash/gitlab_startup.sh"
+  name         = "scripts/bash/gitlab_startup.sh"
+  bucket       = google_storage_bucket.deployment_utils.name
+  source       = "${path.module}/scripts/bash/gitlab_startup.sh"
 }
 
 resource "google_storage_bucket_object" "gitlab_helpers_script" {

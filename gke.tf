@@ -42,10 +42,10 @@ resource "kubernetes_secret" "dockerhub-creds-config" {
 
 
 resource "kubernetes_namespace" "sensitive-namespace" {
-  depends_on  = [module.gke.google_container_node_pool]
+  depends_on    = [module.gke.google_container_node_pool]
   metadata {
     annotations = {name = "Store Kaniko and Dockerhub creds secrets and their related pod runners"}
-    name = "sensitive"
+    name        = "sensitive"
   }
 }
 

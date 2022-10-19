@@ -112,13 +112,17 @@ setup_cicd_vars () {
     INSTANCE_INTERNAL_HOSTNAME=`curl -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/hostname"`
     INSTANCE_INTERNAL_URL=$INSTANCE_PROTOCOL://$INSTANCE_INTERNAL_HOSTNAME
     INSTANCE_INTERNAL_API_V4_URL=$INSTANCE_PROTOCOL://$INSTANCE_INTERNAL_HOSTNAME/api/v4
-    
-    logger $logName "INFO" "CI_EXTERNAL_URL=$EXTERNAL_URL"
-    logger $logName "INFO" "CI_SERVER_HOST=$INSTANCE_INTERNAL_HOSTNAME" 
-    logger $logName "INFO" "CI_SERVER_URL=$INSTANCE_INTERNAL_URL" 
-    logger $logName "INFO" "CI_API_V4_URL=$INSTANCE_INTERNAL_API_V4_URL" 
-    logger $logName "INFO" "CONTAINER_REGISTRY_NAMESPACE=$GCP_PROJECT_ID" 
-    logger $logName "INFO" "CONTAINER_REGISTRY_HOST=gcr.io"
+
+    local instancelvlVars="
+    CI_EXTERNAL_URL=$EXTERNAL_URL 
+    CI_SERVER_HOST=$INSTANCE_INTERNAL_HOSTNAME 
+    CI_SERVER_URL=$INSTANCE_INTERNAL_URL 
+    CI_API_V4_URL=$INSTANCE_INTERNAL_API_V4_URL 
+    CONTAINER_REGISTRY_NAMESPACE=$GCP_PROJECT_ID 
+    CONTAINER_REGISTRY_HOST=gcr.io
+    " 
+    logger $logName "INFO" $instancelvlVars
+
 }
 
 create_cicd_vars () {
