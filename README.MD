@@ -142,6 +142,8 @@ terraform apply --var-file=./config.tfvars
 ```
 
 Once deployed, you should receive the Gitlab instance IP address and the secret name where the password of the Gitlab's root account is stored.
+Before accessing the Gitlab instance, you should look for 'Gitlab instance setup completed' in the Gcloud logging 'gitlab-startup' log name. 
+Errors within Gitlab setup will also be logged, but not all of them will stop the setup. Checkout the entry above the error to understand which process errored.
 
 ```console
 ....

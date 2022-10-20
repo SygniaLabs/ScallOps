@@ -13,20 +13,19 @@ GITLAB_INSTALL_VERSION=`curl -H "Metadata-Flavor: Google" http://169.254.169.254
 GCS_PATH_TO_BACKUP=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gcs-path-to-backup`
 GCLOUD_LOG_NAME="gitlab-startup"
 BACKUP_ARCHIVE_PATH="/tmp/backup_archived.zip"
-ERR_ACTION_EXIT="Exit"
-ERR_ACTION_CONT="Continue"
 
 #Imports
 gsutil cp $DEPLOYMENT_GCS_PREFIX/scripts/bash/gitlab_helpers.sh ./
 gsutil cp $DEPLOYMENT_GCS_PREFIX/scripts/bash/gcloud_logger.sh ./
-source ./gitlab_helpers.sh
 source ./gcloud_logger.sh
+source ./gitlab_helpers.sh
+
 
 # Start
 logger $GCLOUD_LOG_NAME "INFO" "Starting Gitlab instance setup"
 
-set_gitlabVars $GCLOUD_LOG_NAME
 check_installation $GCLOUD_LOG_NAME
+set_gitlabVars $GCLOUD_LOG_NAME
 
 if [ $GITLAB_INSTALLED == 'false' ]; then
     logger $GCLOUD_LOG_NAME "INFO" "Starting Gitlab installation"

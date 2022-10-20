@@ -1,5 +1,7 @@
 #!/bin/bash
 
+readonly RAILS_CMD_PATH=$(pwd)/railscmd.rb
+
 check_installation () {
     local logName=$1
     #In case Gitlab instance get restarted, skip script.
@@ -21,11 +23,10 @@ gitlab_depsInstall () {
     local logName=$1
     # Install Dependencies
     logger $logName "INFO" "Running package updater apt-get update"   
-    errMsg=$(apt-get update 2>&1)
-    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
+    exec_wrapper $ERR_ACTION_EXIT $logName "apt-get update"
+
     logger $logName "INFO" "Installing the following packages curl ca-certificates tzdata perl jq coreutils zip p7zip-full"
-    errMsg=$(apt-get install -y curl ca-certificates tzdata perl jq coreutils zip p7zip-full 2>&1)
-    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
+    exec_wrapper $ERR_ACTION_EXIT $logName "apt-get install -y curl ca-certificates tzdata perl jq coreutils zip p7zip-full"
 }
 
 
@@ -39,6 +40,7 @@ set_gitlabVars () {
     
     #Ext URL
     EXTERNAL_URL="$INSTANCE_PROTOCOL://$INSTANCE_EXTERNAL_DOMAIN"
+    logger $logName "DEBUG" "Gitlab External URL will be $EXTERNAL_URL"   
 }
 
 
@@ -65,15 +67,13 @@ reconfigure_gitlab () {
     # Reconfigure installation
     logger $logName "INFO" "Reconfiguring Gitlab"
     
-    errMsg=$(gitlab-ctl reconfigure 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl reconfigure"
     
-    errMsg=$(gitlab-ctl restart 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl restart"
 
     logger $logName "INFO" "Updating EXTERNAL URL to CI_EXTERNAL_URL CI/CD variable"
-    errMsg=$(gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_EXTERNAL_URL').update(value: '$EXTERNAL_URL')" 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    echo "Ci::InstanceVariable.where(key: 'CI_EXTERNAL_URL').update(value: '$EXTERNAL_URL')" > $RAILS_CMD_PATH
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner  $RAILS_CMD_PATH"
 }
 
 
@@ -84,23 +84,19 @@ gitlab_install () {
     logger $logName "INFO" "Starting postfix installation for domain: $INSTANCE_EXTERNAL_DOMAIN"
     debconf-set-selections <<< "postfix postfix/mailname string $INSTANCE_EXTERNAL_DOMAIN"
     debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
-    errMsg=$(apt-get install --assume-yes postfix 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    exec_wrapper $ERR_ACTION_CONT $logName "apt-get install --assume-yes postfix"
 
     # Install Gitlab Server
     logger $logName "INFO" "Setting up Gitlab installation at version $gitlabVersion"
     curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.deb.sh | bash
     #Specific version installation:
     logger $logName "INFO" "Downloading Gitlab from https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$gitlabVersion.0_amd64.deb/download.deb"
-    errMsg=$(wget --content-disposition https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$gitlabVersion.0_amd64.deb/download.deb 2>&1)
-    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
+    exec_wrapper $ERR_ACTION_EXIT $logName "wget --content-disposition https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$gitlabVersion.0_amd64.deb/download.deb"
     logger $logName "INFO" "Installing Gitlab"
-    errMsg=$(dpkg -i gitlab-ee_$gitlabVersion.0_amd64.deb 2>&1)
-    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg"
+    exec_wrapper $ERR_ACTION_EXIT $logName "dpkg -i gitlab-ee_$gitlabVersion.0_amd64.deb"
     
     logger $logName "INFO" "Reconfiguring Gitlab"
-    errMsg=$(gitlab-ctl reconfigure 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"     
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl reconfigure"
 }
 
 
@@ -121,7 +117,7 @@ setup_cicd_vars () {
     CONTAINER_REGISTRY_NAMESPACE=$GCP_PROJECT_ID 
     CONTAINER_REGISTRY_HOST=gcr.io
     " 
-    logger $logName "INFO" $instancelvlVars
+    logger $logName "DEBUG" $instancelvlVars
 
 }
 
@@ -129,23 +125,30 @@ create_cicd_vars () {
     local logName=$1
     # New instance level variables
     logger $logName "INFO" "Creating instance level CI/CD variables"
-    gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_EXTERNAL_URL', value: '$EXTERNAL_URL').save"
-    gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_HOST', value: '$INSTANCE_INTERNAL_HOSTNAME').save"
-    gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_SERVER_URL', value: '$INSTANCE_INTERNAL_URL').save"
-    gitlab-rails runner "Ci::InstanceVariable.new(key: 'CI_API_V4_URL', value: '$INSTANCE_INTERNAL_API_V4_URL').save"
-    gitlab-rails runner "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_NAMESPACE', value: '$GCP_PROJECT_ID').save"
-    gitlab-rails runner "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_HOST', value: 'gcr.io').save"
+
+    echo "Ci::InstanceVariable.new(key: 'CI_EXTERNAL_URL', value: '$EXTERNAL_URL').save" > $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.new(key: 'CI_SERVER_HOST', value: '$INSTANCE_INTERNAL_HOSTNAME').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.new(key: 'CI_SERVER_URL', value: '$INSTANCE_INTERNAL_URL').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.new(key: 'CI_API_V4_URL', value: '$INSTANCE_INTERNAL_API_V4_URL').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_NAMESPACE', value: '$GCP_PROJECT_ID').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_HOST', value: 'gcr.io').save" >> $RAILS_CMD_PATH
+
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH"
+
 }
 
 update_cicd_vars () {
     local logName=$1
     # Update instance level variables values accroding to the new GCP project and compute hostname
     logger $logName "INFO" "Updating instance level CI/CD variables"
-    gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_SERVER_HOST').update(value: '$INSTANCE_INTERNAL_HOSTNAME')"
-    gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_SERVER_URL').update(value: '$INSTANCE_INTERNAL_URL')"
-    gitlab-rails runner "Ci::InstanceVariable.where(key: 'CI_API_V4_URL').update(value: '$INSTANCE_INTERNAL_API_V4_URL')"
-    gitlab-rails runner "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_NAMESPACE').update(value: '$GCP_PROJECT_ID').save"
-    gitlab-rails runner "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_HOST').update(value: 'gcr.io').save"
+    
+    echo "Ci::InstanceVariable.where(key: 'CI_SERVER_HOST').update(value: '$INSTANCE_INTERNAL_HOSTNAME')" > $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.where(key: 'CI_SERVER_URL').update(value: '$INSTANCE_INTERNAL_URL')" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.where(key: 'CI_API_V4_URL').update(value: '$INSTANCE_INTERNAL_API_V4_URL')" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_NAMESPACE').update(value: '$GCP_PROJECT_ID').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_HOST').update(value: 'gcr.io').save" >> $RAILS_CMD_PATH
+    
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH"
 }
 
 
@@ -156,8 +159,9 @@ seed_instance_reg_token () {
     logger $logName "INFO" "Reading shared runners registration token from secret $GITLAB_RUNNER_REG_SECRET"    
     GITLAB_RUNNER_REG=`gcloud secrets versions access latest --secret=$GITLAB_RUNNER_REG_SECRET`
     logger $logName "INFO" "Seeding shared runners registration token"
-    errMsg=$(gitlab-rails runner "appset = Gitlab::CurrentSettings.current_application_settings; appset.set_runners_registration_token('$GITLAB_RUNNER_REG'); appset.save!" 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    
+    echo "appset = Gitlab::CurrentSettings.current_application_settings; appset.set_runners_registration_token('$GITLAB_RUNNER_REG'); appset.save!" > $RAILS_CMD_PATH
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH"
 }
 
 
@@ -167,9 +171,10 @@ seed_gitlab_root_pwd () {
     GITLAB_INITIAL_ROOT_PASSWORD_SECRET=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-initial-root-pwd-secret`
     logger $logName "INFO" "Reading gitlab root password from secret $GITLAB_INITIAL_ROOT_PASSWORD_SECRET"
     GITLAB_INITIAL_ROOT_PASSWORD=`gcloud secrets versions access latest --secret=$GITLAB_INITIAL_ROOT_PASSWORD_SECRET`
+    
     logger $logName "INFO" "Seeding gitlab root password"
-    errMsg=$(gitlab-rails runner "user = User.find_by_username('root'); user.password = '$GITLAB_INITIAL_ROOT_PASSWORD'; user.password_confirmation = '$GITLAB_INITIAL_ROOT_PASSWORD'; user.save!" 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"
+    echo "user = User.find_by_username('root'); user.password = '$GITLAB_INITIAL_ROOT_PASSWORD'; user.password_confirmation = '$GITLAB_INITIAL_ROOT_PASSWORD'; user.save!" > $RAILS_CMD_PATH
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH"
 }
 
 
@@ -178,12 +183,12 @@ create_groups () {
     local logName=$1
     # Create repo groups (ci, community, private)
     logger $logName "INFO" "Creating groups: ci, community, private"
-    errMsg=$(gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'CI CD Tools', path: 'ci', visibility_level: 10}).execute" 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"
-    errMsg=$(gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'Community Tools', path: 'community', visibility_level: 10}).execute" 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"
-    errMsg=$(gitlab-rails runner "Groups::CreateService.new(User.find_by_id(1), params = {name: 'Private Tools', path: 'private', visibility_level: 10}).execute" 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg"
+    
+    echo "Groups::CreateService.new(User.find_by_id(1), params = {name: 'CI CD Tools', path: 'ci', visibility_level: 10}).execute" > $RAILS_CMD_PATH
+    echo "Groups::CreateService.new(User.find_by_id(1), params = {name: 'Community Tools', path: 'community', visibility_level: 10}).execute" >> $RAILS_CMD_PATH
+    echo "Groups::CreateService.new(User.find_by_id(1), params = {name: 'Private Tools', path: 'private', visibility_level: 10}).execute" >> $RAILS_CMD_PATH
+   
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH"
 }
 
 
@@ -199,8 +204,13 @@ import_scallopsRecipes () {
         local gitCreds=`gcloud secrets versions access latest --secret=$gitCredsSecretName`
         SCALLOPS_RECIPES_GIT_URL="https://$gitCreds@${SCALLOPS_RECIPES_GIT_URL:8}"
 	fi    
-    gitlab-rails runner "cigrp = Group.find_by_path_or_name('ci'); rootuser = User.find_by_id(1); Project.new(import_url: '$SCALLOPS_RECIPES_GIT_URL', name: 'Scallops Recipes', path: 'scallops-recipes', visibility_level: 10, creator: rootuser, namespace: cigrp).save"
-    gitlab-rails runner "newprj = Project.find_by_full_path('ci/scallops-recipes'); Gitlab::GithubImport::Importer::RepositoryImporter.new(newprj, :octokit).execute" # Ignore the following error (undefined method `repository' for :octokit:Symbol)
+    
+    
+    logger $logName "DEBUG" "Ignore the following error: (undefined method repository for :octokit:Symbol)"
+    echo "cigrp = Group.find_by_path_or_name('ci'); rootuser = User.find_by_id(1); Project.new(import_url: '$SCALLOPS_RECIPES_GIT_URL', name: 'Scallops Recipes', path: 'scallops-recipes', visibility_level: 10, creator: rootuser, namespace: cigrp).save" > $RAILS_CMD_PATH
+    echo "newprj = Project.find_by_full_path('ci/scallops-recipes'); Gitlab::GithubImport::Importer::RepositoryImporter.new(newprj, :octokit).execute" >> $RAILS_CMD_PATH
+    
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH" # Ignore the following error (undefined method `repository' for :octokit:Symbol)
 }
 
 
@@ -210,7 +220,9 @@ seed_scallopsRecipes_runner_token () {
     # Make sure to invoke seed_instance_reg_token function before this one, so the $GITLAB_RUNNER_REG variable will be set
     logger $logName "INFO" "Seeding Scallops-Recipes runners registration token"
     local scallopsRunnerReg=GR1348941$GITLAB_RUNNER_REG-scallops-recipes
-    gitlab-rails runner "scallopsprj = Project.find_by_full_path('ci/scallops-recipes'); scallopsprj.set_runners_token('$scallopsRunnerReg'); scallopsprj.save!"
+    
+    echo "scallopsprj = Project.find_by_full_path('ci/scallops-recipes'); scallopsprj.set_runners_token('$scallopsRunnerReg'); scallopsprj.save!" > $RAILS_CMD_PATH
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH"
 }
 
 
@@ -219,12 +231,11 @@ setup_gitlab_backup () {
     local gcsPrefix=$2
     # Download backup cron executor and cron job #Backup will occur every Saturday on 10:00 UTC
     logger $logName "INFO" "Setting up backup procedure with crontab"
-    errMsg=$(gsutil cp $gcsPrefix/scripts/bash/gitlab_backup_exec.sh /gitlab_backup_exec.sh 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    exec_wrapper $ERR_ACTION_CONT $logName "gsutil cp $gcsPrefix/scripts/bash/gitlab_backup_exec.sh /gitlab_backup_exec.sh"
     chmod +x /gitlab_backup_exec.sh
     echo "0 10 * * 6 /gitlab_backup_exec.sh" > gitlab-backup-cron
-    errMsg=$(crontab gitlab-backup-cron 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    logger $logName "DEBUG" "Crontab content $(cat gitlab-backup-cron)"
+    exec_wrapper $ERR_ACTION_CONT $logName "crontab gitlab-backup-cron"
     rm gitlab-backup-cron
 }
 
@@ -237,8 +248,7 @@ get_backup_archive () {
 
     # Download backup
     logger $logName "INFO" "Downloading backup from $gcsPathToBackup"
-    errMsg=$(gsutil cp $gcsPathToBackup $backupArchivePath 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    exec_wrapper $ERR_ACTION_CONT $logName "gsutil cp $gcsPathToBackup $backupArchivePath"
 
 }
 
@@ -265,8 +275,7 @@ restore_backup () {
     mkdir -p $backupDir
 
     logger $logName "INFO" "Extracting backup from $backupArchivePath to $backupDir"
-    errMsg=$(7z x -p$GITLAB_BACKUP_PASSWORD $backupArchivePath -o./$backupDir 2>&1)
-    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
+    exec_wrapper $ERR_ACTION_EXIT $logName "7z x -p$GITLAB_BACKUP_PASSWORD $backupArchivePath -o./$backupDir"
 
 
     logger $logName "INFO" "Copying configuration files and certificates from $backupDir"
@@ -275,7 +284,7 @@ restore_backup () {
 
     # Reconfigure installation
     logger $logName "INFO" "Reconfiguring Gitlab"
-    gitlab-ctl reconfigure
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl reconfigure"
 
     # Stop Gitlab services
     logger $logName "INFO" "Stopping Gitlab services: unicorn, puma, sidekiq"
@@ -292,24 +301,19 @@ restore_backup () {
 
     logger $logName "INFO" "Restoring from backup snapshot... $backupFileName"
     local restoreBackupName=$(echo $backupFileName | cut -d "_" -f 1-5)
-    errMsg=$(yes yes | gitlab-rake gitlab:backup:restore BACKUP=$restoreBackupName 2>&1)
-    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
+    exec_wrapper $ERR_ACTION_EXIT $logName "yes yes | gitlab-rake gitlab:backup:restore BACKUP=$restoreBackupName"
     
     logger $logName "INFO" "Reconfiguring Gitlab"
-    errMsg=$(gitlab-ctl reconfigure 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl reconfigure"
     
     logger $logName "INFO" "Restarting Gitlab services"
-    errMsg=$(gitlab-ctl restart 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl restart"
     
     logger $logName "INFO" "Checking Gitlab services health"
-    errMsg=$(gitlab-rake gitlab:check SANITIZE=true 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rake gitlab:check SANITIZE=true"
     
     logger $logName "INFO" "Checking secrets decryptability"    
-    errMsg=$(gitlab-rake gitlab:doctor:secrets 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rake gitlab:doctor:secrets"
 }
 
 
@@ -339,13 +343,11 @@ execute_backup () {
 
     # Create back up TAR
     logger $logName "INFO" "Creaing backup tar file"
-    errMsg=$(gitlab-backup create 2>&1)
-    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
+    exec_wrapper $ERR_ACTION_EXIT $logName "gitlab-backup create"
 
     # Restart Gitlab services back
     logger $logName "INFO" "Restarting gitlab services"
-    errMsg=$(gitlab-ctl restart 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl restart"
 
     # Copy DB backup and configurations
     local mostRecentBackupName=`ls -t /var/opt/gitlab/backups/ | head -1`
@@ -364,13 +366,11 @@ execute_backup () {
 
     # Archive and encrypt backup
     logger $logName "INFO" "Archiving and encrypting backup"
-    errMsg=$(7z a -p$GITLAB_BACKUP_PASSWORD $backupDir.zip ./$backupDir/* 2>&1)
-    get_last_error $logName $? $ERR_ACTION_EXIT "$errMsg" 
+    exec_wrapper $ERR_ACTION_EXIT $logName "7z a -p$GITLAB_BACKUP_PASSWORD $backupDir.zip ./$backupDir/*"
 
     # Upload archived backup
     logger $logName "INFO" "Uploading backup as: gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupArchiveFile"
-    errMsg=$(gsutil cp $backupDir.zip gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupArchiveFile 2>&1)
-    get_last_error $logName $? $ERR_ACTION_CONT "$errMsg" 
+    exec_wrapper $ERR_ACTION_CONT $logName "gsutil cp $backupDir.zip gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupArchiveFile"
 
 
     # Delete source directory and backup archive
@@ -379,19 +379,4 @@ execute_backup () {
     rm $backupDir.zip
 
     logger $logName "INFO" "Gitlab backup completed"
-}
-
-
-get_last_error () {	
-	local logName=$1
-	local errCode=$2
-	local errAction=$3
-	local errMsg=$4
-	if [ $errCode -ne 0 ]; then
-		logger $logName "ERROR" "ErrCode: $errCode, ErrAction: $errAction,  Message: $errMsg"
-		if [ $errAction == $ERR_ACTION_EXIT ]; then
-			logger $logName "INFO" "Stopping execution due to error"
-			exit 1
-		fi
-	fi
 }
