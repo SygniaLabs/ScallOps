@@ -11,12 +11,13 @@ rbac:
    resources: ["configmaps","secrets"]
    verbs: ["get","create","update","delete"]
 
+concurrent: 50
 runners:
   tags: "linux,kubernetes"
   config: |
     [[runners]]
       executor = "kubernetes"
-      limit = 30
+      limit = 50
       shell = "bash"
       [runners.kubernetes.node_selector]
         "node_pool" = "linux-pool"

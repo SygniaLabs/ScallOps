@@ -134,7 +134,7 @@ module "gke" {
       image_type             = "ubuntu_containerd"
       auto_repair            = false
       auto_upgrade           = false
-      preemptible            = false
+      spot                   = true
       initial_node_count     = 1
     }     
   ] 
@@ -193,7 +193,7 @@ resource "google_container_node_pool" "windows-pool" {
           "node_pool"    = "windows-pool"
         }
       local_ssd_count   = 0
-      machine_type      = "n1-standard-2"
+      machine_type      = "t2d-standard-4"
       metadata          = {
           "cluster_name"               = module.gke.name
           "disable-legacy-endpoints"   = "true"
@@ -202,7 +202,7 @@ resource "google_container_node_pool" "windows-pool" {
           "windows-startup-script-url" = local.gke_win_pool_start_script
         }
       oauth_scopes      = ["https://www.googleapis.com/auth/cloud-platform"]
-      preemptible       = false
+      preemptible       = true
       service_account   = module.gke.service_account
       tags              = [local.gke_win_pool_tag]
       taint             = [
@@ -235,7 +235,7 @@ resource "google_container_node_pool" "windows-pool" {
     }
 
   upgrade_settings {
-    max_surge       = 1
+    max_surge       = 2
     max_unavailable = 0
     }
 }

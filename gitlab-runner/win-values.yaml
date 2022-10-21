@@ -11,13 +11,13 @@ rbac:
    resources: ["configmaps","secrets"]
    verbs: ["get","create","update","delete"]
 
-
+concurrent: 30
 runners:
   tags: "windows,kubernetes"
   config: |
     [[runners]]
       executor = "kubernetes"
-      limit = 4
+      limit = 30
       shell = "pwsh"
       # The FF_USE_POWERSHELL_PATH_RESOLVER feature flag has to be enabled for PowerShell 
       # to resolve paths for Windows correctly when Runner is operating in a Linux environment

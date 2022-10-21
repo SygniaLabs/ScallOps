@@ -205,6 +205,7 @@ If you don't see the Recipes repository, you can import it [manually](https://do
 The included Terraform scripts will deploy the following resources into your GCP project:
 - Compute Engine - Gitlab Instance, managing sources and CI/CD jobs
 - Google Kubernetes Engine (GKE) - K8s cluster to host our CI/CD jobs
+  - Default node pool - Single machine with K8s system pods and runners pods
   - Linux node pool - For the Gitlab-runners pods, and linux related jobs
   - Windows node pool - For Windows related jobs
   - Gitlab-runner Helm packages (Linux-runner, Windows-runner, Kaniko-runner, \[dockerhub-privates-runner\])
@@ -226,18 +227,16 @@ The included Terraform scripts will deploy the following resources into your GCP
 
 Idle:
 * Gitlab Instance: 51.46$ / month (n1-standard-2)
-* Linux node: 36.11$ / month (e2-highcpu-2)
-* Windows node: 115.70$ / month (e2-highcpu-2)
-* Storage (depends on images volume): 100GB - 2$ / month
+* 2 x Linux node: 2 x 10.83$ = 21.66$ / month (e2-highcpu-2 preemptible)
+* Windows node: 134.34$ / month (t2d-standard-4 preemptible)
+* Storage (depends on container images volume and backup size): 100GB - 2$ / month
 * Secret manager: 0.06$ /month
 * GKE: One Zonal cluster is free per billing account
-* **Total: 205$ (us-central-1)** -- [source](https://cloud.google.com/products/calculator/#id=cecbcc81-09b2-4bf6-b4a1-b9019d5b6d23)
+* **Total: 250$ (us-central-1)** -- [source](https://cloud.google.com/products/calculator/#id=9fb07ad6-d965-4409-893e-edf216de4090)
 
 Per Job:
-* Linux: Same as idle since system already up. When scaled 0.09$ per hour for each running node.
-* Windows: Same as idle since one system is already up. When scaled additional 0.03$ for an average compilation job (10 mins).
-
-*Note that Jobs pricing can decrease depending on a simultaneous usage.
+* Linux: Same as idle since system already up. When scaled 0.015$ per hour for each running node.
+* Windows: Same as idle since one system is already up. When scaled additional 0.2$ per hour for each running node.
 
 
 ## Backup procedure

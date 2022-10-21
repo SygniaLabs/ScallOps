@@ -4,6 +4,7 @@
 ### Fixes
 - Fixed TF resources dependencies 
 - Fixed Defender disarm detection issue
+- Fixed K8s Scale up issues
 
 ### Changed
 - README + architecture image
@@ -12,6 +13,9 @@
 - Updated tfvars template
 - Upgraded Gitlab, K8s, Runners versions
 - Adjusted instance level CI/CD variables names
+- Upgraded Windows node pool machine type to 4 vCPU & 16GB RAM
+- Now limiting concurrent jobs for 30 in Windows and 50 in Linux
+- K8s nodes are now preemptible
 
 ### Added
 - Option to specify Scallop-Recipes repo URL (For auto import)
