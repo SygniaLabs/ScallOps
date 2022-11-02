@@ -1,10 +1,11 @@
 # Change Log
 
 ## [0.4] - 2022-10-22
-### Fixes
-- Fixed TF resources dependencies 
-- Fixed Defender disarm detection issue
-- Fixed K8s Scale up issues
+### Added
+- Option to specify Scallop-Recipes repo URL (For auto import)
+- Error handling for Gitlab installation and backup Bash scripts
+- Deployment TF debug option - IAP firewall rules, export configuration files
+- Integration with GCP logger for Gitlab installation and backup
 
 ### Changed
 - README + architecture image
@@ -17,19 +18,12 @@
 - Now limiting concurrent jobs for 30 in Windows and 50 in Linux
 - K8s nodes are now preemptible
 
-### Added
-- Option to specify Scallop-Recipes repo URL (For auto import)
-- Error handling for Gitlab installation and backup Bash scripts
-- Deployment TF debug option - IAP firewall rules, export configuration files
-- Integration with GCP logger for Gitlab installation and backup
-
+### Fixed
+- Fixed TF resources dependencies 
+- Fixed Defender disarm detection issue
+- Fixed K8s Scale up issues
 
 ## [0.3] - 2022-01-07
-### Fixes
-- Windows Runner configuration
-- Minor fixes, duplicate code removal
-- Fixed Linux won't scale down problem
-
 ### Added
 - Added support to migrate from an older Gitlab instance
 - Added Gitlab instance automatic backup capability
@@ -43,9 +37,14 @@
 - Increased CPUs on linux pool
 - Removed Gitlab API token seeding. Gitlab modifications performed using gitlab-rails console
 
+### Fixed
+- Windows Runner configuration
+- Minor fixes, duplicate code removal
+- Fixed Linux won't scale down problem
+
 
 ## [0.2] - 2021-12-21
-### Fixes
+### Fixed
 - Windows Runner configuration
 - Relativ paths
 - Runner version update

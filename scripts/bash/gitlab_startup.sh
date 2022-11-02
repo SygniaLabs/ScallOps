@@ -25,17 +25,17 @@ source ./gitlab_helpers.sh
 logger $GCLOUD_LOG_NAME "INFO" "Starting Gitlab instance setup"
 
 check_installation $GCLOUD_LOG_NAME
-set_gitlabVars $GCLOUD_LOG_NAME
+set_gitlab_vars $GCLOUD_LOG_NAME
 
 if [ $GITLAB_INSTALLED == 'false' ]; then
     logger $GCLOUD_LOG_NAME "INFO" "Starting Gitlab installation"
-    gitlab_depsInstall $GCLOUD_LOG_NAME 
+    gitlab_deps_install $GCLOUD_LOG_NAME 
     gitlab_install $GCLOUD_LOG_NAME $GITLAB_INSTALL_VERSION
     setup_cicd_vars $GCLOUD_LOG_NAME
 
     if [ $GCS_PATH_TO_BACKUP == 'NONE' ]; then
         create_groups $GCLOUD_LOG_NAME
-        import_scallopsRecipes $GCLOUD_LOG_NAME
+        import_scallops_recipes $GCLOUD_LOG_NAME
         create_cicd_vars $GCLOUD_LOG_NAME
 
     else         
@@ -48,7 +48,7 @@ if [ $GITLAB_INSTALLED == 'false' ]; then
 
     seed_instance_reg_token $GCLOUD_LOG_NAME
     seed_gitlab_root_pwd $GCLOUD_LOG_NAME
-    seed_scallopsRecipes_runner_token $GCLOUD_LOG_NAME
+    seed_scallops_recipes_runner_token $GCLOUD_LOG_NAME
     setup_gitlab_backup $GCLOUD_LOG_NAME $DEPLOYMENT_GCS_PREFIX
 
 else

@@ -49,9 +49,9 @@ resource "google_storage_bucket_object" "gcloud_logger_script" {
 resource "google_storage_bucket_object" "gitlab_backup_script_exec" {
   depends_on   = [google_storage_bucket_object.gitlab_helpers_script,
                   google_storage_bucket_object.gcloud_logger_script]
-  name   = "scripts/bash/gitlab_backup_exec.sh"
+  name   = "scripts/bash/gitlab_backup.sh"
   bucket = google_storage_bucket.deployment_utils.name
-  source = "${path.module}/scripts/bash/gitlab_backup_exec.sh"
+  source = "${path.module}/scripts/bash/gitlab_backup.sh"
 }
 
 # Migration resource

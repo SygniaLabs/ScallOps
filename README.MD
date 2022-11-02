@@ -242,7 +242,7 @@ Per Job:
 ## Backup procedure
 
 The deployment requires to supply a GCS bucket name to store the [Gitlab backup](https://docs.gitlab.com/ee/raketasks/backup_restore.html#back-up-gitlab).
-Backup occurs every Saturday during 10AM UTC, and is done by the Gitlab compute instance using the *[gitlab_backup_exec.sh](scripts/bash/gitlab_backup_exec.sh)* bash script, which is stored on GCS and setup into crontab during deployment.
+Backup occurs every Saturday during 10AM UTC, and is done by the Gitlab compute instance using the *[gitlab_backup.sh](scripts/bash/gitlab_backup.sh)* bash script, which is stored on GCS and setup into crontab during deployment.
 The backup archive is encrypted with a password stored in GCP secret-manager which is supplied (gitlab_backup_key_secret_id) by the user during Terraform deployment.
 
 The encrypted archive contains the following components:

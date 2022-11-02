@@ -19,18 +19,18 @@ check_installation () {
 }
 
 
-gitlab_depsInstall () {
+gitlab_deps_install () {
     local logName=$1
     # Install Dependencies
-    logger $logName "INFO" "Running package updater apt-get update"   
+    logger $logName "INFO" "Running package updater"   
     exec_wrapper $ERR_ACTION_EXIT $logName "apt-get update"
 
-    logger $logName "INFO" "Installing the following packages curl ca-certificates tzdata perl jq coreutils zip p7zip-full"
+    logger $logName "INFO" "Installing dependencies"
     exec_wrapper $ERR_ACTION_EXIT $logName "apt-get install -y curl ca-certificates tzdata perl jq coreutils zip p7zip-full"
 }
 
 
-set_gitlabVars () {
+set_gitlab_vars () {
     local logName=$1
     logger $logName "INFO" "Fetching Gitlab network variables"
     ## Network variables
@@ -192,7 +192,7 @@ create_groups () {
 }
 
 
-import_scallopsRecipes () {
+import_scallops_recipes () {
     local logName=$1
     # Import SCALLOPS-RECIPES project repo
     SCALLOPS_RECIPES_GIT_URL=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/scallops-recipes-git-url`
@@ -214,7 +214,7 @@ import_scallopsRecipes () {
 }
 
 
-seed_scallopsRecipes_runner_token () {
+seed_scallops_recipes_runner_token () {
     local logName=$1
     # Seed scallops-recipes sepcific runners registration token
     # Make sure to invoke seed_instance_reg_token function before this one, so the $GITLAB_RUNNER_REG variable will be set
@@ -231,9 +231,9 @@ setup_gitlab_backup () {
     local gcsPrefix=$2
     # Download backup cron executor and cron job #Backup will occur every Saturday on 10:00 UTC
     logger $logName "INFO" "Setting up backup procedure with crontab"
-    exec_wrapper $ERR_ACTION_CONT $logName "gsutil cp $gcsPrefix/scripts/bash/gitlab_backup_exec.sh /gitlab_backup_exec.sh"
-    chmod +x /gitlab_backup_exec.sh
-    echo "0 10 * * 6 /gitlab_backup_exec.sh" > gitlab-backup-cron
+    exec_wrapper $ERR_ACTION_CONT $logName "gsutil cp $gcsPrefix/scripts/bash/gitlab_backup.sh /gitlab_backup.sh"
+    chmod +x /gitlab_backup.sh
+    echo "0 10 * * 6 /gitlab_backup.sh" > gitlab-backup-cron
     logger $logName "DEBUG" "Crontab content $(cat gitlab-backup-cron)"
     exec_wrapper $ERR_ACTION_CONT $logName "crontab gitlab-backup-cron"
     rm gitlab-backup-cron
