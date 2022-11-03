@@ -28,7 +28,8 @@ resource "google_storage_bucket_object" "gitlab_startup_script" {
   depends_on   = [
                   google_storage_bucket_object.gitlab_helpers_script,
                   google_storage_bucket_object.gcloud_logger_script,
-                  google_storage_bucket_object.gitlab_backup_script_exec]
+                  google_storage_bucket_object.gitlab_backup_script]
+  
   name         = "scripts/bash/gitlab_startup.sh"
   bucket       = google_storage_bucket.deployment_utils.name
   source       = "${path.module}/scripts/bash/gitlab_startup.sh"
@@ -46,12 +47,13 @@ resource "google_storage_bucket_object" "gcloud_logger_script" {
   source = "${path.module}/scripts/bash/gcloud_logger.sh"
 }
 
-resource "google_storage_bucket_object" "gitlab_backup_script_exec" {
+resource "google_storage_bucket_object" "gitlab_backup_script" {
   depends_on   = [google_storage_bucket_object.gitlab_helpers_script,
                   google_storage_bucket_object.gcloud_logger_script]
-  name   = "scripts/bash/gitlab_backup.sh"
-  bucket = google_storage_bucket.deployment_utils.name
-  source = "${path.module}/scripts/bash/gitlab_backup.sh"
+  
+  name         = "scripts/bash/gitlab_backup.sh"
+  bucket       = google_storage_bucket.deployment_utils.name
+  source       = "${path.module}/scripts/bash/gitlab_backup.sh"
 }
 
 # Migration resource

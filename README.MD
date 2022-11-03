@@ -260,6 +260,8 @@ The backup process log is casted to a [GCP log](https://cloud.google.com/logging
 ## Open issues
 - Windows related containers are **not** built and deployed automatically to your Container Registry. For now, you will have to do it manually. You can use the supplied [Windows Dockerfiles](https://github.com/SygniaLabs/ScallOps-Recipes/tree/main/_ci-maintain/dockerfiles/windows).
 - Windows related containers must include native Powershell Core (PWSH).
+- Concurrent Linux related jobs are limited to 50 due to the Gitlab's instance compute resources.
+- Concurrent Windows related jobs are limited to 30 due to the time it takes to pull a container image when vertical scaling is triggered.
 
 
 ## Security Consideration

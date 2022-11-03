@@ -195,7 +195,7 @@ create_groups () {
 import_scallops_recipes () {
     local logName=$1
     # Import SCALLOPS-RECIPES project repo
-    SCALLOPS_RECIPES_GIT_URL=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/scallops-recipes-git-url`
+    readonly SCALLOPS_RECIPES_GIT_URL=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/scallops-recipes-git-url`
     local gitCredsSecretName=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/scallops-recipes-git-creds-secret`
     logger $logName "INFO" "Importing SCALLOPS-RECIPES repo from $SCALLOPS_RECIPES_GIT_URL to ci group"
 
