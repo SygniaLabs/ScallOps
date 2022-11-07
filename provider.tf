@@ -8,16 +8,18 @@ provider "google" {
     project = var.dns_project_id
 }
 
+data "google_client_config" "default" {}
+
 provider "kubernetes" {
-  host                   = module.gke_auth.host
-  token                  = module.gke_auth.token
-  cluster_ca_certificate = module.gke_auth.cluster_ca_certificate
+  host                   = "https://${module.gke.endpoint}"
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(module.gke.ca_certificate)
 }
 
 provider "helm" {
   kubernetes {
-    cluster_ca_certificate = module.gke_auth.cluster_ca_certificate
-    host                   = module.gke_auth.host
-    token                  = module.gke_auth.token
+  host                   = "https://${module.gke.endpoint}"
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(module.gke.ca_certificate)
   }
 }

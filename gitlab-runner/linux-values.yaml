@@ -2,21 +2,22 @@ rbac:
  create: true
  rules:
  - apiGroups: [""]
-   resources: ["pods", "secrets", "configmaps"]
-   verbs: ["get", "list", "watch", "create", "patch", "delete", "update"]
- - apiGroups: [""]
-   resources: ["pods/exec", "pods/attach"]
+   resources: ["pods/attach","pods/exec"]
    verbs: ["create", "patch", "delete"]
  - apiGroups: [""]
-   resources: ["pods/log"]
-   verbs: ["get"]
+   resources: ["pods","services"]
+   verbs: ["get","watch","create", "delete"]
+ - apiGroups: [""]
+   resources: ["configmaps","secrets"]
+   verbs: ["get","create","update","delete"]
 
+concurrent: 50
 runners:
   tags: "linux,kubernetes"
   config: |
     [[runners]]
       executor = "kubernetes"
-      limit = 30
+      limit = 50
       shell = "bash"
       [runners.kubernetes.node_selector]
         "node_pool" = "linux-pool"

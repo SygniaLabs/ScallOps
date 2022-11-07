@@ -13,6 +13,7 @@ resource "google_storage_bucket" "deployment_utils" {
   storage_class               = "STANDARD"
   uniform_bucket_level_access = true
   provider                    = google.offensive-pipeline
+  force_destroy               = true
 }
 
 
@@ -23,52 +24,48 @@ resource "google_storage_bucket_object" "disable_windows_defender_ps" {
 }
 
 
-resource "google_storage_bucket_object" "gitlab_install_script" {
-  name   = "scripts/bash/gitlab_install.sh"
-  bucket = google_storage_bucket.deployment_utils.name
-  source = "${path.module}/scripts/bash/gitlab_install.sh"
+resource "google_storage_bucket_object" "gitlab_startup_script" {
+  depends_on   = [
+                  google_storage_bucket_object.gitlab_helpers_script,
+                  google_storage_bucket_object.gcloud_logger_script,
+                  google_storage_bucket_object.gitlab_backup_script]
+  
+  name         = "scripts/bash/gitlab_startup.sh"
+  bucket       = google_storage_bucket.deployment_utils.name
+  source       = "${path.module}/scripts/bash/gitlab_startup.sh"
 }
 
-# Customized Gitlab backup script
+resource "google_storage_bucket_object" "gitlab_helpers_script" {
+  name   = "scripts/bash/gitlab_helpers.sh"
+  bucket = google_storage_bucket.deployment_utils.name
+  source = "${path.module}/scripts/bash/gitlab_helpers.sh"
+}
+
+resource "google_storage_bucket_object" "gcloud_logger_script" {
+  name   = "scripts/bash/gcloud_logger.sh"
+  bucket = google_storage_bucket.deployment_utils.name
+  source = "${path.module}/scripts/bash/gcloud_logger.sh"
+}
 
 resource "google_storage_bucket_object" "gitlab_backup_script" {
-  name   = "scripts/bash/gitlab_backup.sh"
-  bucket = google_storage_bucket.deployment_utils.name
-  source = "${path.module}/scripts/bash/gitlab_backup.sh"
-}
-
-resource "google_storage_bucket_object" "gitlab_backup_script_exec" {
-  name   = "scripts/bash/gitlab_backup_exec.sh"
-  bucket = google_storage_bucket.deployment_utils.name
-  source = "${path.module}/scripts/bash/gitlab_backup_exec.sh"
+  depends_on   = [google_storage_bucket_object.gitlab_helpers_script,
+                  google_storage_bucket_object.gcloud_logger_script]
+  
+  name         = "scripts/bash/gitlab_backup.sh"
+  bucket       = google_storage_bucket.deployment_utils.name
+  source       = "${path.module}/scripts/bash/gitlab_backup.sh"
 }
 
 # Migration resource
 
-resource "google_storage_bucket_object" "gitlab_migrate_script" {
-  count  = var.migrate_gitlab ? 1 : 0
-  name   = "scripts/bash/gitlab_migrate.sh"
-  bucket = google_storage_bucket.deployment_utils.name
-  source = "${path.module}/scripts/bash/gitlab_migrate.sh"
-}
-
-
-# Downloading in this way since state file won't support big files in resource attributes.
-  resource "null_resource" "download_gitlab_backup" {
+# Transfer is done in this way since state file won't support big files in resource attributes.
+  resource "null_resource" "transfer_gitlab_backup" {
   count  = var.migrate_gitlab ? 1 : 0
   triggers = {
     gcs_backup_path = "gs://${var.migrate_gitlab_backup_bucket}/${var.migrate_gitlab_backup_path}"
   }
   provisioner "local-exec" {
     when    = create
-    command = "gsutil cp gs://${var.migrate_gitlab_backup_bucket}/${var.migrate_gitlab_backup_path} ${path.module}/${var.migrate_gitlab_backup_path}"
+    command = "gsutil cp gs://${var.migrate_gitlab_backup_bucket}/${var.migrate_gitlab_backup_path} ${local.gitlab_migrate_backup}"
   }
-}
-
-resource "google_storage_bucket_object" "gitlab_migrate_backup" {
-  depends_on = [null_resource.download_gitlab_backup]
-  count  = var.migrate_gitlab ? 1 : 0  
-  name   = var.migrate_gitlab_backup_path
-  bucket = google_storage_bucket.deployment_utils.name
-  source = "${path.module}/${var.migrate_gitlab_backup_path}"
 }

@@ -18,10 +18,17 @@ resource "google_service_account" "gke_bucket_service_account" {
 
 ## Roles ##
 
+resource "random_string" "custom_roles_suffix" {
+  length           = 4
+  special          = false
+  lower            = true
+  upper            = false
+}
+
 # Create role with permissions to backup only without read/overwrite/delete
 resource "google_project_iam_custom_role" "backup_archive_role" {
-  role_id     = "gitlab_backupArchive_${var.infra_name}"
-  title       = "Gitlab Backup Role"
+  role_id     = "gitlab_backupArchive_${var.infra_name}_${random_string.custom_roles_suffix.result}"
+  title       = "Gitlab Backup Role for ${var.infra_name}"
   description = "A role attached to the gitlab compute service account allowing it to update new backup archives to the specified bucket (var.backups_bucket_name)."
   permissions = [
                 "storage.objects.list",
@@ -34,12 +41,12 @@ resource "google_project_iam_custom_role" "backup_archive_role" {
 }
 
 
-# Role that allows startup script to remove itself from metadata
-resource "google_project_iam_custom_role" "compute_metadata_role" {
-  role_id     = "gitlab_setMetadata_${var.infra_name}"
-  title       = "Set Metadata Custom"
-  description = "A role attached to the gitlab compute instance allowing it to set compute metadata variables."
-  permissions = ["compute.instances.get", "compute.instances.setMetadata"]
+# Role that allows startup script write logs
+resource "google_project_iam_custom_role" "compute_log_role" {
+  role_id     = "gitlab_customRole_${var.infra_name}_${random_string.custom_roles_suffix.result}"
+  title       = "Write logs role for ${var.infra_name}"
+  description = "A role attached to the gitlab compute instance allowing it to write logs."
+  permissions = ["logging.logEntries.create"]
   provider    = google.offensive-pipeline
 }
 
@@ -48,6 +55,7 @@ resource "google_project_iam_custom_role" "compute_metadata_role" {
 
 # Service account user role binding 
 resource "google_project_iam_member" "sa_binding" {
+  project  = var.project_id
   provider = google.offensive-pipeline
   role     = "roles/iam.serviceAccountUser"
   member   = "serviceAccount:${google_service_account.gitlab_service_account.email}"
@@ -72,10 +80,11 @@ resource "google_storage_bucket_iam_binding" "backup_bucket_binding" {
   ]
 }
 
-# Bind the compute metadata role the the service account
+# Bind the compute custom role the the service account
 resource "google_project_iam_binding" "compute_binding" {
+  project  = var.project_id
   provider = google.offensive-pipeline
-  role     = google_project_iam_custom_role.compute_metadata_role.name
+  role     = google_project_iam_custom_role.compute_log_role.name
   members  = [
     "serviceAccount:${google_service_account.gitlab_service_account.email}",
   ]
@@ -136,8 +145,18 @@ resource "google_secret_manager_secret_iam_binding" "gitlab_initial_root_pwd" {
 
 
 resource "google_secret_manager_secret_iam_binding" "gitlab_backup_key" {
-  project    = google_secret_manager_secret.gitlab_backup_key.project
-  secret_id  = google_secret_manager_secret.gitlab_backup_key.secret_id
+  project    = var.project_id
+  secret_id  = var.gitlab_backup_key_secret_id
+  role       = "roles/secretmanager.secretAccessor"
+  members    = [
+    "serviceAccount:${google_service_account.gitlab_service_account.email}",
+  ]
+}
+
+resource "google_secret_manager_secret_iam_binding" "git_creds" {
+  count      = var.scallops_recipes_git_creds_secret != "" ? 1 : 0  
+  project    = var.project_id
+  secret_id  = var.scallops_recipes_git_creds_secret
   role       = "roles/secretmanager.secretAccessor"
   members    = [
     "serviceAccount:${google_service_account.gitlab_service_account.email}",

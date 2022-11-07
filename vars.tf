@@ -25,6 +25,12 @@ variable "backups_bucket_name" {
     description = "The name of the bucket backups are stored. Bucket must exist before apply. Terrafrom will add objectCreator permission to the gitlab svc account."
 }
 
+variable "gitlab_backup_key_secret_id" {
+  description = "An existing secret ID in the same GCP project (project_id) storing a password for the backup process (Allowed symbols: -_ )"
+  type        = string
+  default     = ""
+}
+
 # Migration variables 
 variable "migrate_gitlab" {
     type        = bool
@@ -32,12 +38,6 @@ variable "migrate_gitlab" {
     default     = false
 }
 
-
-variable "migrate_gitlab_version" {
-    type        = string
-    description = "The Gitlab full version that you are migrating from e.g. '14.3.3-ee'"
-    default     = ""
-}
 
 variable "migrate_gitlab_backup_bucket" {
     type        = string
@@ -51,12 +51,6 @@ variable "migrate_gitlab_backup_path" {
     default     = ""
 }
 
-variable "migrate_gitlab_backup_password" {
-    type        = string
-    description = "The password value decrypting the archived backup zip"
-    default     = ""
-    sensitive   = true
-}
 
 
 # Gitlab instance related variables
@@ -71,6 +65,15 @@ variable "gitlab_instance_protocol" {
     }
 }
 
+variable "gitlab_version" {
+    type        = string
+    description = "Gitlab version to install (e.g. 15.2.1-ee). If performing migration, you must specify the Gitlab backup version from the previous instance"
+    default     = "15.2.1-ee"
+    validation {
+        condition     = can(regex("^[0-9]+.[0-9]+.[0-9]+-ee$", var.gitlab_version))
+        error_message = "Invalid Gitlab version"
+    }
+}
 
 variable "plans" {
   type    = map
@@ -83,7 +86,6 @@ variable "size" {
     type    = string
     default = "2x8"
 }
-
 
 variable "osimages" {
   type       = map
@@ -98,6 +100,17 @@ variable "osimage" {
   default     = "ubuntu"
 }
 
+variable "scallops_recipes_git_url" {
+  type        = string
+  description = "Scallops-Recipes repository. Git URL must be provided in the following format: https://<DOMAIN>/<NAMESPACE>/<Repository>.git"
+  default     = "https://github.com/SygniaLabs/ScallOps-Recipes.git"
+}
+
+variable "scallops_recipes_git_creds_secret" {
+  type        = string
+  description = "A secret in the same project (project_id) storing Git credentials to access the provided scallops-recipes repository. Format is <user>:<access-token> or <access-token>."
+  default     = ""
+}
 
 # Networking and region related variables
 
@@ -127,6 +140,31 @@ variable "zone" {
 
 
 
+# GKE related variables
+variable "gke_version" {
+  description = "Kubernetes engine version"
+  type        = string
+  default     = "1.24.2-gke.1900" # Available version -> https://cloud.google.com/kubernetes-engine/docs/release-notes
+}
+
+variable "gke_linux_pool_version" {
+  description = "GKE Linux node pool version"
+  type        = string
+  default     = "1.24.2-gke.1900"
+}
+
+variable "gke_windows_pool_version" {
+  description = "GKE Windows node pool version"
+  type        = string
+  default     = "1.24.2-gke.1900"
+}
+
+variable "runner_chart_url" {
+  description = "Gitlab runner Helm chart archive URL" # https://artifacthub.io/packages/helm/gitlab/gitlab-runner
+  type        = string
+  default     = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.43.1.tgz" # Correspond to Gitlab 15.2.1
+}
+
 
 # DNS and managed zone variables
 variable "external_hostname" {
@@ -151,4 +189,10 @@ variable "dockerhub-creds-secret" {
   description = "An existing secret name in the same GCP project storing the Dockerhub credentials (username:password)"
   type        = string
   default     = ""
+}
+
+variable "debug_flag" {
+    type        = bool
+    description = "Enable debugging resources such as IAP Firewall rules, and export of config files"
+    default     = false
 }

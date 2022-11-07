@@ -1,8 +1,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=plastic)](https://opensource.org/licenses/MIT)
-![Terraform](https://img.shields.io/badge/Terraform-v1.0.11%7Ev1.1.8-8040c9.svg?style=plastic)
-![Gitlab](https://img.shields.io/badge/Gitlab-v14.9.3-fd7e14.svg?style=plastic)
-![GKE](https://img.shields.io/badge/GKE-1.21.6-1A73E8.svg?style=plastic)
-![ScallOps](https://img.shields.io/badge/ScallOps-v0.3-000000.svg?style=plastic)
+![Terraform](https://img.shields.io/badge/Terraform-v1.2.8-8040c9.svg?style=plastic)
+![Gitlab](https://img.shields.io/badge/Gitlab-v15.2.1-fd7e14.svg?style=plastic)
+![GKE](https://img.shields.io/badge/GKE-1.24.2-1A73E8.svg?style=plastic)
+![ScallOps](https://img.shields.io/badge/ScallOps-v0.4-000000.svg?style=plastic)
 
 # SCALLOPS
 
@@ -13,15 +13,15 @@ It utilizes the CI/CD concept to manage and automate the weaponization and deplo
 
 Security teams and individuals can develop, collaborate and utilize the framework's "Recipes" in order to perform their Red Team tasks with greater efficiency.
 
-Refer to the [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository to learn more about the features of this framework and how you can design your own Recipes.
+You can choose to deploy the framework's infrastructure using the Terraform scripts within this repository or use your own infrastructure.
+Refer to the [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository to learn more about the infrasctrucure requirements.
 
-Developed by [@Gil Biton](https://twitter.com/B1t0n_)
 
 <p align="center">
   <img src="./img/scallops.png" alt="ScallOps logo" width="" height="300">
 </p>
 
-## Features
+## Infrastructure Features
 * All Gitlab's CI/CD features for designning the Recipes.
 * Linux & Windows based operating systems for running the Recipes weaponization jobs.
 * On-demand automated node scalability (Google Kubernets Engine).
@@ -34,16 +34,17 @@ Developed by [@Gil Biton](https://twitter.com/B1t0n_)
 
 ## Deployment
 
-The framework can be deployed to GCP using the provided Terraform scripts.
+The infrastructure can be deployed to GCP using the provided Terraform scripts.
 It is mainly built from a Gitlab instance that provides the CI features and a Kubernetes cluster that execute CI jobs on the relevant operating systems.
 There is also a use of Cloud Container Registry to store customized container images that we may use during operating the framework.
 Google Cloud Storage is in use to store maintenance scripts and encrypted Gitlab backups.
 
-Pre-requisites:
+Automated deployment Pre-requisites:
 * Google Cloud subscription with **OWNER** permissions on a project (It is reccomended to use a **clean** GCP project).
-* Google Storage Bucket to store the backups. This Bucket is not required to share the same GCP project with the rest of the deployment.
 * Access to GCP cloud shell or locally using Terraform with GCP credentials.
-* Web Browser.
+* Google Storage Bucket to store the backups. This Bucket is not required to share the same GCP project with the rest of the deployment.
+* A secret storing a password which will be used to encrypt/decrypt backup archives.
+
 
 
 Clone the repository
@@ -55,57 +56,73 @@ nano config.tfvars
 
 Carefully read the instructions related to each variable and act accordingly.
 
-**project_id**, **infra_name** and **backups_bucket_name** variables are required.
+**project_id**, **infra_name**, **gitlab_backup_key_secret_id** and **backups_bucket_name** variables are required.
 
-The code below is an example for *config.tfvars* file using all available optional variables:
+The code below is an example for *config.tfvars* file using all available optional features:
 ```bash
-#### Required ####
-
-project_id = "my-offensive-cicd"              # GCP Project ID
-infra_name = "scallops"                       # The name you wish to have as a prefix for the deployment's resources. Must comply with [a-z]([-a-z0-9]*[a-z0-9])
-backups_bucket_name = "mycicd-gitlab-backups" # The name of an existing bucket you wish to receive backups to. Terraform will create the required permission to upload the backup archive.
+##### Scallops IAC variables #####
+#### Note that some variables are required (#Required), and some variables modifications will take effect also after deployment (#PostDeploymentModifiable).
 
 
-#### Optionals ####
-operator_ips = ["1.2.3.4", "22.23.11.12"]     # Office IP / home IPs
+## GCP Project ID
+project_id = "my-scallops" #Required
 
+## The name you wish to have as a prefix for the deployment's resources. Must comply with ^[a-z]([a-z0-9]*[a-z0-9])$
+infra_name = "scallops" #Required
 
-## External DNS ##
-# Uncomment below 3 lines if wishing to supply external DNS name for accessing Gitalb instance
+## The name of an existing bucket you wish to receive backups to. Terraform will create the required permission to upload the backup archive.
+backups_bucket_name = "my-backups" #Required #PostDeploymentModifiable
 
-external_hostname = "scallops.mydomain.com"   # Requires re-deploy of the Gitlab instance to be set as external url from Gitlab's perspective. Will also update Certificate ALT names
-dns_project_id = "dns-mgt-company"            # The project ID where the managed DNS zone is located
-dns_managed_zone_name = "mydomain-com"        # The configured managed DNS zone name
-
-
-## Docker hub credentials ##
-# An existing secret name storing Dockerhub credentials to fetch private container images (format is username:password or username:access-token).
-# Creating Dockerhub access token https://docs.docker.com/docker-hub/access-tokens/
-# Creating a secret through GCP secret manager https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#create
-
-dockerhub-creds-secret = "dockerhub-private-credentials"     # Name of the secret in secret-manager
+## An existing secret ID in the same GCP project (project_id) storing a password for the backup process (Allowed symbols for secret value: -_ )
+## Creating a secret through GCP secret manager https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#create
+gitlab_backup_key_secret_id = "scallops-backup-secret" #Required #PostDeploymentModifiable
 
 
 
-## Default deployment values ##
-# Uncommenct and modify only if needed (us-central-1 considered to be the cheapest).
+## Gitlab version to install (e.g. 15.2.1-ee)
+gitlab_version = "15.2.1-ee" #Optional
 
-# gitlab_instance_protocol = "https"  # The Gitlab instance Web server protocol, http or https.
-# zone = "a"                          # Zone for the k8s cluster, Gitlab instance and network.
-# region = us-central-1               # Region for the k8s cluster, Gitlab instance and network.
+## IP addresses that can interact with the Gitlab instance via HTTP/S (Office IP / Home IPs)
+operator_ips = ["1.2.3.4"] #Optional #PostDeploymentModifiable
+
+## Enable debugging resources such as IAP Firewall rules, and export of config files
+#debug_flag = true #Optional #PostDeploymentModifiable
+
+## The Gitlab instance Web server protocol, http or https.
+# gitlab_instance_protocol = "https" #Optional
+
+## Region for the k8s cluster, Gitlab instance and network.
+# region = us-central-1 #Optional
+
+## Zone for the k8s cluster, Gitlab instance and network.
+# zone = "a" #Optional
 
 
 
+## External DNS ## #Optional #PostDeploymentModifiable #GitlabRestartRequired
+## Uncomment the 3 lines below if wishing to supply external DNS name for accessing Gitalb instance
 
-## Migration variables ##
-# If you plan on migrating from a different gitlab instance, uncomment all migration variables below, and follow requirements.
-# Requires Gsutil on the terraform deployer system as backup will be downloaded locally
+dns_project_id = "orgdns"                           # The project ID where the managed DNS zone is located
+dns_managed_zone_name = "org-com"        # The configured managed DNS zone name
+external_hostname = "scallops.org.com"   # The hostname you wish to set of the instance (Must be subdomain of the managed zone)
 
-migrate_gitlab = true                            ## If performing migration from another Gitlab instance and got a backup file from previous instance. true/false.
-migrate_gitlab_version = "14.5.2-ee"             ## The Gitlab full version that you are migrating from e.g. '14.3.3-ee'
-migrate_gitlab_backup_bucket = "mycicd-gitlab-backups"              ## The Google Storage Bucket to your Gitlab backup e.g. 'mybucket1-abcd'
-migrate_gitlab_backup_path = "backups/gitlab-16451235-backup.zip"   ## The path to the archived backup zip e.g 'backups/gitlab-xxx-backup.zip'
-migrate_gitlab_backup_password = "SecretBackupPassword"             ## The password value decrypting the archived backup zip
+
+
+## Docker hub credentials (https://docs.docker.com/docker-hub/access-tokens/) #Optional #PostDeploymentModifiable
+## An existing secret name in secret-manager storing Dockerhub credentials to fetch private container images (format is username:password or username:access-token).
+dockerhub-creds-secret = "dockerhub-credentials"
+
+
+
+## Migration variables #Optional
+## If you plan on migrating from a different gitlab instance, uncomment all migration variables below, and follow requirements.
+## 1. 'gitlab_backup_key_secret_id' secret must store the password value decrypting the archived backup zip.
+## 2. 'gitlab_version' must be equal to the version you are migrating from.
+## 3. Operation requires Gsutil on the terraform deployer system as backup will be downloaded locally
+
+migrate_gitlab = true                   ## If performing migration from another Gitlab instance and got a backup file from previous instance. true/false.
+migrate_gitlab_backup_bucket = "my-backups"       ## The Google Storage Bucket to your Gitlab backup e.g. 'mybucket1-abcd'
+migrate_gitlab_backup_path = "gitlab-backups/scallops-gitlab-backup-16600000.zip"         ## The path to the archived backup zip e.g 'backups/gitlab-xxx-backup.zip'
 
 ## ### ### ### ####
 ```
@@ -125,40 +142,57 @@ terraform apply --var-file=./config.tfvars
 ```
 
 Once deployed, you should receive the Gitlab instance IP address and the secret name where the password of the Gitlab's root account is stored.
+Before accessing the Gitlab instance, you should look for 'Gitlab instance setup completed' in the Gcloud logging 'gitlab-startup' log name. 
+Errors within Gitlab setup will also be logged, but not all of them will stop the setup. Checkout the entry above the error to understand which process errored.
 
 ```console
 ....
-kubernetes_secret.k8s_gitlab_cert_secret: Creating...
+....
+module.gke.google_container_node_pool.pools["linux-pool"]: Still creating... [7m31s elapsed]
+module.gke.google_container_node_pool.pools["linux-pool"]: Creation complete after 7m32s [id=projects/my-scallops/locations/us-central1-a/clusters/scallops-offensive-pipeline/nodePools/linux-pool]
+module.gke_auth.data.google_container_cluster.gke_cluster: Reading...
+google_container_node_pool.windows-pool: Creating...
+module.gke_auth.data.google_container_cluster.gke_cluster: Read complete after 0s [id=projects/my-scallops/locations/us-central1-a/clusters/scallops-offensive-pipeline]
 kubernetes_namespace.sensitive-namespace: Creating...
-kubernetes_pod_disruption_budget.konnectivity-agent: Creating...
 kubernetes_pod_disruption_budget.kube-dns: Creating...
-kubernetes_secret.k8s_gitlab_cert_secret: Creation complete after 1s
-kubernetes_pod_disruption_budget.kube-dns: Creation complete after 1s [id=kube-system/k8s-pdb-kube-dns]
-kubernetes_pod_disruption_budget.konnectivity-agent: Creation complete after 1s [id=kube-system/k8s-pdb-konnectivity-agent]
-kubernetes_namespace.sensitive-namespace: Creation complete after 1s [id=sensitive]
-kubernetes_secret.k8s_gitlab_cert_secret-sensitive: Creating...
-kubernetes_secret.google-application-credentials: Creating...
+kubernetes_pod_disruption_budget.konnectivity-agent: Creating...
+kubernetes_secret.k8s_gitlab_cert_secret: Creating...
 helm_release.gitlab-runner-linux: Creating...
-kubernetes_secret.google-application-credentials: Creation complete after 1s [id=sensitive/kaniko-secret]
-kubernetes_secret.k8s_gitlab_cert_secret-sensitive: Creation complete after 1s
+kubernetes_pod_disruption_budget.konnectivity-agent: Creation complete after 1s [id=kube-system/k8s-pdb-konnectivity-agent]
+kubernetes_secret.k8s_gitlab_cert_secret: Creation complete after 1s [id=default/scallops-gitlab.us-central1-a.c.my-scallops.internal-cert]
+kubernetes_pod_disruption_budget.kube-dns: Creation complete after 1s [id=kube-system/k8s-pdb-kube-dns]
+kubernetes_namespace.sensitive-namespace: Creation complete after 1s [id=sensitive]
+kubernetes_secret.google-application-credentials: Creating...
+kubernetes_secret.dockerhub-creds-config[0]: Creating...
+kubernetes_secret.k8s_gitlab_cert_secret-sensitive: Creating...
 helm_release.gitlab-runner-win: Creating...
+kubernetes_secret.dockerhub-creds-config[0]: Creation complete after 0s [id=sensitive/dockerhub-creds-jsonconfig]
+kubernetes_secret.google-application-credentials: Creation complete after 0s [id=sensitive/kaniko-secret]
+kubernetes_secret.k8s_gitlab_cert_secret-sensitive: Creation complete after 0s [id=sensitive/scallops-gitlab.us-central1-a.c.my-scallops.internal-cert]
 helm_release.gitlab-runner-kaniko: Creating...
+helm_release.gitlab-runner-dockerhub[0]: Creating...
+google_container_node_pool.windows-pool: Still creating... [10s elapsed]
 helm_release.gitlab-runner-linux: Still creating... [10s elapsed]
-helm_release.gitlab-runner-linux: Creation complete after 11s [id=linux]
-helm_release.gitlab-runner-kaniko: Creation complete after 8s [id=kaniko]
 helm_release.gitlab-runner-win: Still creating... [10s elapsed]
-helm_release.gitlab-runner-win: Creation complete after 10s [id=windows]
+helm_release.gitlab-runner-kaniko: Still creating... [10s elapsed]
+helm_release.gitlab-runner-linux: Creation complete after 13s [id=linux]
+helm_release.gitlab-runner-win: Creation complete after 13s [id=windows]
+helm_release.gitlab-runner-dockerhub[0]: Still creating... [10s elapsed]
+helm_release.gitlab-runner-dockerhub[0]: Creation complete after 11s [id=dockerhub-privates]
+helm_release.gitlab-runner-kaniko: Creation complete after 12s [id=kaniko]
+google_container_node_pool.windows-pool: Still creating... [20s elapsed]
+google_container_node_pool.windows-pool: Still creating... [10m50s elapsed]
+google_container_node_pool.windows-pool: Creation complete after 10m55s [id=projects/my-scallops/locations/us-central1-a/clusters/scallops-offensive-pipeline/nodePools/windows-pool]
 
-
-Apply complete! Resources: 63 added, 0 changed, 0 destroyed.
+Apply complete! Resources: 65 added, 0 changed, 0 destroyed.
 
 Outputs:
 
-gitlab_ext_ip = "3.4.5.6"
-gitlab_root_password_secret = "<infra-name>-gitlab-root-password"
+gitlab_ext_ip = "X.X.X.X"
+gitlab_root_password_secret = "scallops-gitlab-root-password"
 ```
 
-[ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository should be pre-imported into the Gitlab insatnce together with few instance level CI/CD variables configured. All you have left to do is designing your recipes :)
+[ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) repository should be pre-imported into the Gitlab insatnce together with few instance level CI/CD variables configured. All you have left to do is executing the recipes :)
 If you don't see the Recipes repository, you can import it [manually](https://docs.gitlab.com/ee/user/project/import/repo_by_url.html).
 > Important! If it is your initial deployment, you must run the deployment's initialization pipeline. 
 1. Refer to the imported Recipes repository at /ci/scallops-recipes in your Gitlab instance. 
@@ -168,11 +202,10 @@ If you don't see the Recipes repository, you can import it [manually](https://do
 
 ## Architecture
 
-The framework was built on top of GCP and coded with Terraform scripts.
-
-GCP resources include:
+The included Terraform scripts will deploy the following resources into your GCP project:
 - Compute Engine - Gitlab Instance, managing sources and CI/CD jobs
 - Google Kubernetes Engine (GKE) - K8s cluster to host our CI/CD jobs
+  - Default node pool - Single machine with K8s system pods and runners pods
   - Linux node pool - For the Gitlab-runners pods, and linux related jobs
   - Windows node pool - For Windows related jobs
   - Gitlab-runner Helm packages (Linux-runner, Windows-runner, Kaniko-runner, \[dockerhub-privates-runner\])
@@ -194,25 +227,23 @@ GCP resources include:
 
 Idle:
 * Gitlab Instance: 51.46$ / month (n1-standard-2)
-* Linux node: 36.11$ / month (e2-highcpu-2)
-* Windows node: 115.70$ / month (e2-highcpu-2)
-* Storage (depends on images volume): 100GB - 2$ / month
+* 2 x Linux node: 2 x 10.83$ = 21.66$ / month (e2-highcpu-2 preemptible)
+* Windows node: 134.34$ / month (t2d-standard-4 preemptible)
+* Storage (depends on container images volume and backup size): 100GB - 2$ / month
 * Secret manager: 0.06$ /month
 * GKE: One Zonal cluster is free per billing account
-* **Total: 205$ (us-central-1)** -- [source](https://cloud.google.com/products/calculator/#id=cecbcc81-09b2-4bf6-b4a1-b9019d5b6d23)
+* **Total: 250$ (us-central-1)** -- [source](https://cloud.google.com/products/calculator/#id=9fb07ad6-d965-4409-893e-edf216de4090)
 
 Per Job:
-* Linux: Same as idle since system already up. When scaled 0.09$ per hour for each running node.
-* Windows: Same as idle since one system is already up. When scaled additional 0.03$ for an average compilation job (10 mins).
-
-*Note that Jobs pricing can decrease depending on a simultaneous usage.
+* Linux: Same as idle since system already up. When scaled 0.015$ per hour for each running node.
+* Windows: Same as idle since one system is already up. When scaled additional 0.2$ per hour for each running node.
 
 
 ## Backup procedure
 
 The deployment requires to supply a GCS bucket name to store the [Gitlab backup](https://docs.gitlab.com/ee/raketasks/backup_restore.html#back-up-gitlab).
-Backup occurs every Saturday during 10AM UTC, and is done by the Gitlab compute instance using the *[gitlab_backup.sh](scripts/bash/gitlab_backup.sh)* bash script (Stored on GCS).
-The backup archive is encrypted with a password generated by Terrafrom and stored within the secret manager.
+Backup occurs every Saturday during 10AM UTC, and is done by the Gitlab compute instance using the *[gitlab_backup.sh](scripts/bash/gitlab_backup.sh)* bash script, which is stored on GCS and setup into crontab during deployment.
+The backup archive is encrypted with a password stored in GCP secret-manager which is supplied (gitlab_backup_key_secret_id) by the user during Terraform deployment.
 
 The encrypted archive contains the following components:
 * Timestamp_yyyy_mm_dd_14.5.2-ee_gitlab_backup.tar (A file containing the Gitlab DB)
@@ -221,13 +252,16 @@ The encrypted archive contains the following components:
 * ssl/hostname.key (SSL certificate private key belonging to the existing hostname)
 * ssl/hostname.cer (SSL public certificate file belonging to the existing hostname)
 
-The backup process log is also uploaded to the supplied bucket on every backup.
+The backup process log is casted to a [GCP log](https://cloud.google.com/logging/docs/view/logs-explorer-interface) named "gitlab-backup-exec".
 
 *Note that this backup structure works with the deployment migration capability.
 
 
 ## Open issues
 - Windows related containers are **not** built and deployed automatically to your Container Registry. For now, you will have to do it manually. You can use the supplied [Windows Dockerfiles](https://github.com/SygniaLabs/ScallOps-Recipes/tree/main/_ci-maintain/dockerfiles/windows).
+- Windows related containers must include native Powershell Core (PWSH).
+- Concurrent Linux related jobs are limited to 50 due to the Gitlab's instance compute resources.
+- Concurrent Windows related jobs are limited to 30 due to the time it takes to pull a container image when vertical scaling is triggered.
 
 
 ## Security Consideration
