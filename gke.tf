@@ -2,51 +2,27 @@
 
 
 ## K8s secrets and namespaces
-
-resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
-  depends_on  = [module.gke_auth, module.gke]
-  data        = {
-    "${local.instance_internal_domain}.crt" = tls_self_signed_cert.gitlab-self-signed-cert.cert_pem
-  }
-  metadata {
-    name      = "${local.instance_internal_domain}-cert"
-    namespace = "default"
-  }
-}
-
-
-resource "kubernetes_namespace" "sensitive-namespace" {
-  depends_on  = [module.gke_auth, module.gke]
-  metadata {
-    annotations = {name = "Store Kaniko secret and pod runner"}
-    name = "sensitive"
-  }
-}
-
 resource "kubernetes_secret" "google-application-credentials" {
-  depends_on  = [module.gke_auth, module.gke, kubernetes_namespace.sensitive-namespace]
   data        = {
     "kaniko-token-secret.json" = base64decode(google_service_account_key.storage_admin_role.private_key)
   }
   metadata {
     name      = "kaniko-secret"
-    namespace = "sensitive"
+    namespace = kubernetes_namespace.sensitive-namespace.id
   }
 }
 
 resource "kubernetes_secret" "k8s_gitlab_cert_secret-sensitive" {
-  depends_on  = [module.gke_auth, module.gke, kubernetes_namespace.sensitive-namespace]
   data        = {
     "${local.instance_internal_domain}.crt" = tls_self_signed_cert.gitlab-self-signed-cert.cert_pem
   }
   metadata {
     name      = "${local.instance_internal_domain}-cert"
-    namespace = "sensitive"
+    namespace = kubernetes_namespace.sensitive-namespace.id
   }
 }
 
 resource "kubernetes_secret" "dockerhub-creds-config" {
-  depends_on  = [module.gke_auth, module.gke, kubernetes_namespace.sensitive-namespace]
   count       = var.dockerhub-creds-secret != "" ? 1 : 0  
   data        = {
     ".dockerconfigjson" =  jsonencode({
@@ -60,28 +36,73 @@ resource "kubernetes_secret" "dockerhub-creds-config" {
   type        = "kubernetes.io/dockerconfigjson"
   metadata {
     name      = "dockerhub-creds-jsonconfig"
-    namespace = "sensitive"
+    namespace = kubernetes_namespace.sensitive-namespace.id
   }
 }
 
 
-## K8s auth
+resource "kubernetes_namespace" "sensitive-namespace" {
+  depends_on    = [module.gke.google_container_node_pool]
+  metadata {
+    annotations = {name = "Store Kaniko and Dockerhub creds secrets and their related pod runners"}
+    name        = "sensitive"
+  }
+}
 
-module "gke_auth" {
-  depends_on   = [module.gcp-network]
-  source       = "terraform-google-modules/kubernetes-engine/google//modules/auth"
-  project_id   = var.project_id
-  cluster_name = module.gke.name
-  location     = module.gke.location
+resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
+  depends_on  = [module.gke.google_container_node_pool]
+  data        = {
+    "${local.instance_internal_domain}.crt" = tls_self_signed_cert.gitlab-self-signed-cert.cert_pem
+  }
+  metadata {
+    name      = "${local.instance_internal_domain}-cert"
+    namespace = "default"
+  }
+}
+
+
+# Pod disruption budget
+
+resource "kubernetes_pod_disruption_budget" "kube-dns" {
+  depends_on  = [module.gke.google_container_node_pool]
+  metadata {
+    name      = "k8s-pdb-kube-dns"
+    namespace = "kube-system"
+  }
+  spec {
+    max_unavailable = 1
+    selector {
+      match_labels = {
+        k8s-app = "kube-dns"
+      }
+    }
+  }
+}
+
+
+resource "kubernetes_pod_disruption_budget" "konnectivity-agent" {
+  depends_on  = [module.gke.google_container_node_pool]
+  metadata {
+    name      = "k8s-pdb-konnectivity-agent"
+    namespace = "kube-system"
+  }
+  spec {
+    max_unavailable = "50%"
+    selector {
+      match_labels = {
+        k8s-app = "konnectivity-agent"
+      }
+    }
+  }
 }
 
 
 ## K8s cluster
 
 module "gke" {
-  depends_on                 = [google_compute_instance.gitlab]
   source                     = "terraform-google-modules/kubernetes-engine/google"
-  version                    = "17.3.0"
+  version                    = "22.0.0" # https://github.com/terraform-google-modules/terraform-google-kubernetes-engine
+  kubernetes_version         = var.gke_version
   project_id                 = var.project_id
   name                       = "${var.infra_name}-offensive-pipeline"
   regional                   = false
@@ -96,25 +117,24 @@ module "gke" {
   horizontal_pod_autoscaling = true
   network_policy             = false
 # remove_default_node_pool   = true
-#  initial_node_count         = 1
+  initial_node_count         = 1
   create_service_account     = true
   grant_registry_access      = true
-  
 
   node_pools = [
     {
       name                   = "linux-pool"
-      version                = "1.22.6-gke.300"      
+      version                = var.gke_linux_pool_version
       machine_type           = "e2-highcpu-2"
       min_count              = 1
       max_count              = 8
       local_ssd_count        = 0
       disk_size_gb           = 100
       disk_type              = "pd-standard"
-      image_type             = "UBUNTU" // 20.04
+      image_type             = "ubuntu_containerd"
       auto_repair            = false
       auto_upgrade           = false
-      preemptible            = false
+      spot                   = true
       initial_node_count     = 1
     }     
   ] 
@@ -135,9 +155,10 @@ module "gke" {
     all          = []
   }
   node_pools_tags = {
-    all = []
+    linux-pool = [local.gke_linux_pool_tag]
   }
 }
+
 
 
 ## K8s windows node pool
@@ -146,19 +167,19 @@ resource "google_container_node_pool" "windows-pool" {
   cluster             = module.gke.cluster_id
   initial_node_count  = 1
   location            = "${var.region}-${var.zone}"
-  max_pods_per_node   = 10
+  max_pods_per_node   = 8
   name                = "windows-pool"
   #node_count          = 0
   node_locations      = ["${var.region}-${var.zone}"]
   provider            = google.offensive-pipeline
-  version             = "1.20.9-gke.1001" #Make upgrades from here.
+  version             = var.gke_windows_pool_version
   autoscaling {
       max_node_count = 8
       min_node_count = 1 # at least 1 required since Gitlab K8s runner for windows has issue with scaling-up from 0->1 nodes as node-pool label cant contain the windows build version
     }
 
   management {
-      auto_repair  = false
+      auto_repair  = true
       auto_upgrade = false
     }
 
@@ -166,13 +187,13 @@ resource "google_container_node_pool" "windows-pool" {
       disk_size_gb      = 200
       disk_type         = "pd-standard"
       guest_accelerator = []
-      image_type        = "WINDOWS_LTSC"
+      image_type        = "windows_ltsc_containerd"
       labels            = {
           "cluster_name" = module.gke.name
           "node_pool"    = "windows-pool"
         }
       local_ssd_count   = 0
-      machine_type      = "n1-standard-2"
+      machine_type      = "t2d-standard-4"
       metadata          = {
           "cluster_name"               = module.gke.name
           "disable-legacy-endpoints"   = "true"
@@ -181,9 +202,9 @@ resource "google_container_node_pool" "windows-pool" {
           "windows-startup-script-url" = local.gke_win_pool_start_script
         }
       oauth_scopes      = ["https://www.googleapis.com/auth/cloud-platform"]
-      preemptible       = false
+      preemptible       = true
       service_account   = module.gke.service_account
-      tags              = local.gke_win_pool_tags
+      tags              = [local.gke_win_pool_tag]
       taint             = [
           {
               effect = "PREFER_NO_SCHEDULE"
@@ -204,7 +225,6 @@ resource "google_container_node_pool" "windows-pool" {
 
       workload_metadata_config {
         mode          = "GKE_METADATA"
-        node_metadata = "GKE_METADATA_SERVER"
         }
     }
 
@@ -215,42 +235,7 @@ resource "google_container_node_pool" "windows-pool" {
     }
 
   upgrade_settings {
-    max_surge       = 1
+    max_surge       = 2
     max_unavailable = 0
     }
 }
-
-resource "kubernetes_pod_disruption_budget" "kube-dns" {
-  depends_on  = [module.gke]
-  metadata {
-    name      = "k8s-pdb-kube-dns"
-    namespace = "kube-system"
-  }
-  spec {
-    max_unavailable = 1
-    selector {
-      match_labels = {
-        k8s-app = "kube-dns"
-      }
-    }
-  }
-}
-
-
-resource "kubernetes_pod_disruption_budget" "konnectivity-agent" {
-  depends_on  = [module.gke]
-  metadata {
-    name      = "k8s-pdb-konnectivity-agent"
-    namespace = "kube-system"
-  }
-  spec {
-    max_unavailable = "50%"
-    selector {
-      match_labels = {
-        k8s-app = "konnectivity-agent"
-      }
-    }
-  }
-}
-
-

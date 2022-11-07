@@ -19,5 +19,17 @@ override.tf.json
 # Exclude Terraform lock file
 .terraform.lock.hcl
 
+#Exclude state and config files
+
+backend.tf
+current*.tfvars
+
 # Ignore downloaded backups
-backups/**
+gitlab_backups/**
+
+# Certificates
+*.crt
+*.key
+
+# k8s
+kubeconfig

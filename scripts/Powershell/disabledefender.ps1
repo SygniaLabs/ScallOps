@@ -1,3 +1,2 @@
-Write-Output "Disabling Windows Defender"
-Set-MpPreference -DisableIntrusionPreventionSystem $true -DisableIOAVProtection $true -DisableRealtimeMonitoring $true -DisableScriptScanning $true -EnableControlledFolderAccess Disabled -EnableNetworkProtection AuditMode -Force -MAPSReporting Disabled -SubmitSamplesConsent NeverSend
+Set-MpPreference -DisableRealtimeMonitoring $true -SubmitSamplesConsent NeverSend
 Get-MpPreference -Verbose
