@@ -3,7 +3,7 @@ rbac:
  rules:
  - apiGroups: [""]
    resources: ["pods/attach","pods/exec"]
-   verbs: ["create", "patch", "delete"]
+   verbs: ["create", "patch", "delete", "get"]
  - apiGroups: [""]
    resources: ["pods","services"]
    verbs: ["get","watch","create", "delete"]

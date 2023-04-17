@@ -97,6 +97,18 @@ resource "helm_release" "gitlab-runner-linux" {
     name  = "runnerRegistrationToken"
     value = random_password.gitlab_runner_registration_token.result
   }
+  set {
+    name  = "sessionServer.enabled"
+    value = "true"
+  }
+  set {
+    name  = "sessionServer.timeout"
+    value = 1800
+  }
+  set {
+    name  = "sessionServer.loadBalancerSourceRanges[0]"
+    value = "${google_compute_instance.gitlab.network_interface.0.access_config.0.nat_ip}/32"
+  }
 }
 
 
