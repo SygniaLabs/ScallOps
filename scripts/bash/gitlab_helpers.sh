@@ -353,7 +353,7 @@ execute_backup () {
     logger $logName "INFO" "Using backup: $mostRecentBackupName"
 
     logger $logName "INFO" "Copying DB backup, gitlab configurations and SSL ceritficates"
-    cp /var/opt/gitlab/backups/$mostRecentBackupName $backupDir/
+    mv /var/opt/gitlab/backups/$mostRecentBackupName $backupDir/
     cp /etc/gitlab/gitlab.rb $backupDir/
     cp /etc/gitlab/gitlab-secrets.json $backupDir/
     cp -R /etc/gitlab/ssl/ $backupDir/
