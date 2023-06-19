@@ -37,10 +37,16 @@ set_gitlab_vars () {
     INSTANCE_PROTOCOL=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/instance-protocol` #http/https
     INSTANCE_EXTERNAL_DOMAIN=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/instance-external-domain`
     EXTERNAL_IP=`curl -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip`
+    CONTAINER_REGISTRY_HOST=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/container-registry-host`
+    CONTAINER_REGISTRY_NAMESPACE=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/container-registry-namespace`
     
     #Ext URL
     EXTERNAL_URL="$INSTANCE_PROTOCOL://$INSTANCE_EXTERNAL_DOMAIN"
-    logger $logName "DEBUG" "Gitlab External URL will be $EXTERNAL_URL"   
+    logger $logName "DEBUG" "Gitlab External URL will be $EXTERNAL_URL"
+
+    #Container registry prefix
+    logger $logName "DEBUG" "Container registry prefix: $CONTAINER_REGISTRY_HOST/$CONTAINER_REGISTRY_NAMESPACE"
+
 }
 
 
@@ -114,8 +120,8 @@ setup_cicd_vars () {
         CI_SERVER_HOST=$INSTANCE_INTERNAL_HOSTNAME 
         CI_SERVER_URL=$INSTANCE_INTERNAL_URL 
         CI_API_V4_URL=$INSTANCE_INTERNAL_API_V4_URL 
-        CONTAINER_REGISTRY_NAMESPACE=$GCP_PROJECT_ID 
-        CONTAINER_REGISTRY_HOST=gcr.io
+        CONTAINER_REGISTRY_NAMESPACE=$CONTAINER_REGISTRY_NAMESPACE 
+        CONTAINER_REGISTRY_HOST=$CONTAINER_REGISTRY_HOST
     " 
 
 }
@@ -129,8 +135,8 @@ create_cicd_vars () {
     echo "Ci::InstanceVariable.new(key: 'CI_SERVER_HOST', value: '$INSTANCE_INTERNAL_HOSTNAME').save" >> $RAILS_CMD_PATH
     echo "Ci::InstanceVariable.new(key: 'CI_SERVER_URL', value: '$INSTANCE_INTERNAL_URL').save" >> $RAILS_CMD_PATH
     echo "Ci::InstanceVariable.new(key: 'CI_API_V4_URL', value: '$INSTANCE_INTERNAL_API_V4_URL').save" >> $RAILS_CMD_PATH
-    echo "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_NAMESPACE', value: '$GCP_PROJECT_ID').save" >> $RAILS_CMD_PATH
-    echo "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_HOST', value: 'gcr.io').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_NAMESPACE', value: '$CONTAINER_REGISTRY_NAMESPACE').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_HOST', value: '$CONTAINER_REGISTRY_HOST').save" >> $RAILS_CMD_PATH
 
     exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH"
 
@@ -144,8 +150,8 @@ update_cicd_vars () {
     echo "Ci::InstanceVariable.where(key: 'CI_SERVER_HOST').update(value: '$INSTANCE_INTERNAL_HOSTNAME')" > $RAILS_CMD_PATH
     echo "Ci::InstanceVariable.where(key: 'CI_SERVER_URL').update(value: '$INSTANCE_INTERNAL_URL')" >> $RAILS_CMD_PATH
     echo "Ci::InstanceVariable.where(key: 'CI_API_V4_URL').update(value: '$INSTANCE_INTERNAL_API_V4_URL')" >> $RAILS_CMD_PATH
-    echo "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_NAMESPACE').update(value: '$GCP_PROJECT_ID').save" >> $RAILS_CMD_PATH
-    echo "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_HOST').update(value: 'gcr.io').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_NAMESPACE').update(value: '$CONTAINER_REGISTRY_NAMESPACE').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_HOST').update(value: '$CONTAINER_REGISTRY_HOST').save" >> $RAILS_CMD_PATH
     
     exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH"
 }

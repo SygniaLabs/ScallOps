@@ -3,6 +3,8 @@ locals {
     vpc_main_subnet           = "10.0.0.0/22" # 10.0.0.0 - 10.0.3.255 , 1024 IPs
     gke_pod_subnet            = "10.2.0.0/17" # 10.2.0.0 - 10.2.127.255 - 32,768 IPs.
     gke_svc_subnet            = "10.2.128.0/20" # 10.2.128.0 - 10.2.143.255 - 4096 IPs.
+    gke_registry_host         = "${var.region}-docker.pkg.dev"
+    gke_registry_namespace    = "${var.project_id}/${var.infra_name}"    
     gke_linux_pool_tag        = "gke-${var.infra_name}-offensive-pipeline-gke-linux-pool"
     gke_win_pool_tag          = "gke-${var.infra_name}-offensive-pipeline-windows-pool"
     gke_win_pool_start_script = join("/", [

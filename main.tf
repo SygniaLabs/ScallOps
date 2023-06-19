@@ -59,6 +59,8 @@ resource "google_compute_instance" "gitlab" {
     gitlab-backup-key-secret                   = var.gitlab_backup_key_secret_id
     gitlab-backup-bucket-name                  = var.backups_bucket_name
     gitlab-version                             = var.gitlab_version
+    container-registry-host                    = local.gke_registry_host
+    container-registry-namespace               = local.gke_registry_namespace
     scallops-recipes-git-url                   = var.scallops_recipes_git_url
     scallops-recipes-git-creds-secret          = var.scallops_recipes_git_creds_secret != "" ? var.scallops_recipes_git_creds_secret : "NONE"
   }

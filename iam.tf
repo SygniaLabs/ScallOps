@@ -9,10 +9,10 @@ resource "google_service_account" "gitlab_service_account" {
   provider     = google.offensive-pipeline
 }
 
-# GKE Container with storage.admin permission service account (Capability to push container images to GCR.IO)
-resource "google_service_account" "gke_bucket_service_account" {
-  account_id   = "${var.infra_name}-gke-buckt"
-  display_name = "GKE Service Account for Pods to access buckets, push and pull containers"
+# Service account with capability to push container images to sepcific repository in artifact registry
+resource "google_service_account" "kaniko" {
+  account_id   = "${var.infra_name}-gke-bucket"
+  display_name = "Service Account for Pods to access artifact registry repository"
   provider     = google.offensive-pipeline
 }
 
@@ -91,16 +91,17 @@ resource "google_project_iam_binding" "compute_binding" {
 }
 
 
-# Bind gcr.io storage admin to the container pusher service account
-resource "google_storage_bucket_iam_member" "containeradmin_member" {
-  bucket    = "artifacts.${var.project_id}.appspot.com"  # Default prefix-suffix for container registry bucket
-  provider  = google.offensive-pipeline
-  role      = "roles/storage.admin"
-  member    = "serviceAccount:${google_service_account.gke_bucket_service_account.email}"
+# Bind artifact registry write access to specific repository
+resource "google_artifact_registry_repository_iam_member" "writer" {
+  project = google_artifact_registry_repository.containers.project
+  location = google_artifact_registry_repository.containers.location
+  repository = google_artifact_registry_repository.containers.name
+  role = "roles/artifactregistry.writer"
+  member = "serviceAccount:${google_service_account.kaniko.email}"
 }
 
-resource "google_service_account_key" "storage_admin_role" {
-  service_account_id = google_service_account.gke_bucket_service_account.name
+resource "google_service_account_key" "artifact_registry_writer" {
+  service_account_id = google_service_account.kaniko.name
 }
 
 
