@@ -63,7 +63,7 @@ resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
 
 # Pod disruption budget
 
-resource "kubernetes_pod_disruption_budget" "kube-dns" {
+resource "kubernetes_pod_disruption_budget_v1" "kube-dns" {
   depends_on  = [module.gke.google_container_node_pool]
   metadata {
     name      = "k8s-pdb-kube-dns"
@@ -80,7 +80,7 @@ resource "kubernetes_pod_disruption_budget" "kube-dns" {
 }
 
 
-resource "kubernetes_pod_disruption_budget" "konnectivity-agent" {
+resource "kubernetes_pod_disruption_budget_v1" "konnectivity-agent" {
   depends_on  = [module.gke.google_container_node_pool]
   metadata {
     name      = "k8s-pdb-konnectivity-agent"

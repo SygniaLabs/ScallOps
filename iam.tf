@@ -4,7 +4,7 @@
 
 # Gitlab compute instance service account
 resource "google_service_account" "gitlab_service_account" {
-  account_id   = "${var.infra_name}-gitlab-svc"
+  account_id   = "${local.gitlab_instance_name}-svc"
   display_name = "Gitlab Service Account"
   provider     = google.offensive-pipeline
 }
@@ -145,21 +145,17 @@ resource "google_secret_manager_secret_iam_binding" "gitlab_initial_root_pwd" {
 }
 
 
-resource "google_secret_manager_secret_iam_binding" "gitlab_backup_key" {
+resource "google_secret_manager_secret_iam_member" "gitlab_backup_key" {
   project    = var.project_id
   secret_id  = var.gitlab_backup_key_secret_id
   role       = "roles/secretmanager.secretAccessor"
-  members    = [
-    "serviceAccount:${google_service_account.gitlab_service_account.email}",
-  ]
+  member     = "serviceAccount:${google_service_account.gitlab_service_account.email}"
 }
 
-resource "google_secret_manager_secret_iam_binding" "git_creds" {
+resource "google_secret_manager_secret_iam_member" "git_creds" {
   count      = var.scallops_recipes_git_creds_secret != "" ? 1 : 0  
   project    = var.project_id
   secret_id  = var.scallops_recipes_git_creds_secret
   role       = "roles/secretmanager.secretAccessor"
-  members    = [
-    "serviceAccount:${google_service_account.gitlab_service_account.email}",
-  ]
+  member     = "serviceAccount:${google_service_account.gitlab_service_account.email}"
 }

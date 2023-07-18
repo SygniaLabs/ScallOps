@@ -2,19 +2,45 @@
 
 readonly RAILS_CMD_PATH=$(pwd)/railscmd.rb
 
-check_installation () {
+check_installation() {
     local logName=$1
-    #In case Gitlab instance get restarted, skip script.
-    logger $logName "INFO" "Checking whether Gitlab is installed"
-    GILAB_VERSION_FILE=/opt/gitlab/version-manifest.txt
+    local gitlabTargetVersion=$2
+
+    # In case GitLab instance gets restarted, skip the script.
+    logger $logName "INFO" "Checking whether GitLab is installed"
+    GITLAB_VERSION_FILE=/opt/gitlab/version-manifest.txt
     GITLAB_INSTALLED="false"
-    if [ -f "$GILAB_VERSION_FILE" ]; then
-        logger $logName "DEBUG" "$GILAB_VERSION_FILE exists"
+
+    if [ -f "$GITLAB_VERSION_FILE" ]; then
+        logger $logName "DEBUG" "$GITLAB_VERSION_FILE exists"
         GITLAB_INSTALLED="true"
-        GITLAB_EE_VERSION=$(grep gitlab-ee $GILAB_VERSION_FILE | cut -d " " -f2)-ee
-        logger $logName "INFO" "Installed Gitlab version is $GITLAB_EE_VERSION"
-    else         
-        logger $logName "DEBUG" "$GILAB_VERSION_FILE does not exist"
+        GITLAB_EE_VERSION=$(grep gitlab-ee $GITLAB_VERSION_FILE | cut -d " " -f2)-ee
+        logger $logName "INFO" "Installed GitLab version is $GITLAB_EE_VERSION"
+
+        # Check if we wish to upgrade the Gitlab application
+        if [ "$GITLAB_EE_VERSION" != "$gitlabTargetVersion" ]; then
+            logger $logName "INFO" "GitLab version does not match the target version. Upgrading..."
+            # Skip the auto backup when making an upgrade
+            logger $logName "INFO" "Skipping auto backup"
+            exec_wrapper $ERR_ACTION_CONT $logName "touch /etc/gitlab/skip-auto-backup"
+
+            logger $logName "INFO" "Updating package soruces..."
+            exec_wrapper $ERR_ACTION_EXIT $logName "apt update"
+            exec_wrapper $ERR_ACTION_CONT $logName "apt-cache madison gitlab-ee"
+            
+            logger $logName "INFO" "Installing Gitlab at version $gitlabTargetVersion"
+            exec_wrapper $ERR_ACTION_EXIT $logName "apt install gitlab-ee=$gitlabTargetVersion.0"
+            
+            logger $logName "INFO" "Running checks..."
+            exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl status"
+            exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rake gitlab:check SANITIZE=true"
+           
+            logger $logName "INFO" "GitLab version upgraded successfully"
+        else
+            logger $logName "INFO" "GitLab is aligned with the targeted version"
+        fi
+    else
+        logger $logName "DEBUG" "$GITLAB_VERSION_FILE does not exist"
     fi
 }
 
@@ -85,7 +111,8 @@ reconfigure_gitlab () {
 
 gitlab_install () {
     local logName=$1
-    local gitlabVersion=$2
+    local gitlabPkg=$2
+    local pkgOutputName="gitlab-ee_amd64.deb"
     # Install Postfix non-interactive
     logger $logName "INFO" "Starting postfix installation for domain: $INSTANCE_EXTERNAL_DOMAIN"
     debconf-set-selections <<< "postfix postfix/mailname string $INSTANCE_EXTERNAL_DOMAIN"
@@ -93,13 +120,13 @@ gitlab_install () {
     exec_wrapper $ERR_ACTION_CONT $logName "apt-get install --assume-yes postfix"
 
     # Install Gitlab Server
-    logger $logName "INFO" "Setting up Gitlab installation at version $gitlabVersion"
+    logger $logName "INFO" "Setting up Gitlab installation"
     curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.deb.sh | bash
     #Specific version installation:
-    logger $logName "INFO" "Downloading Gitlab from https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$gitlabVersion.0_amd64.deb/download.deb"
-    exec_wrapper $ERR_ACTION_EXIT $logName "wget --content-disposition https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$gitlabVersion.0_amd64.deb/download.deb"
+    logger $logName "INFO" "Downloading Gitlab from $gitlabPkg"
+    exec_wrapper $ERR_ACTION_EXIT $logName "wget --content-disposition -O $pkgOutputName $gitlabPkg"
     logger $logName "INFO" "Installing Gitlab"
-    exec_wrapper $ERR_ACTION_EXIT $logName "dpkg -i gitlab-ee_$gitlabVersion.0_amd64.deb"
+    exec_wrapper $ERR_ACTION_EXIT $logName "dpkg -i $pkgOutputName"
     
     logger $logName "INFO" "Reconfiguring Gitlab"
     exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl reconfigure"
@@ -280,23 +307,17 @@ restore_backup () {
     mkdir -p $backupDir
 
     logger $logName "INFO" "Extracting backup from $backupArchivePath to $backupDir"
-    exec_wrapper $ERR_ACTION_EXIT $logName "7z x -p$GITLAB_BACKUP_PASSWORD $backupArchivePath -o./$backupDir"
+    exec_wrapper_no_print $ERR_ACTION_EXIT $logName "7z x -p$GITLAB_BACKUP_PASSWORD $backupArchivePath -o./$backupDir"
 
+    # Stop Gitlab services
+    logger $logName "INFO" "Stopping Gitlab services: puma, sidekiq"
+    gitlab-ctl stop puma
+    gitlab-ctl stop sidekiq
+    gitlab-ctl status
 
     logger $logName "INFO" "Copying configuration files and certificates from $backupDir"
     cp $backupDir/gitlab* /etc/gitlab
     cp -R $backupDir/ssl /etc/gitlab
-
-    # Reconfigure installation
-    logger $logName "INFO" "Reconfiguring Gitlab"
-    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl reconfigure"
-
-    # Stop Gitlab services
-    logger $logName "INFO" "Stopping Gitlab services: unicorn, puma, sidekiq"
-    gitlab-ctl stop unicorn
-    gitlab-ctl stop puma
-    gitlab-ctl stop sidekiq
-    gitlab-ctl status
 
     # Restore from backup
     local backupFileName=$(ls $backupDir | grep _gitlab_backup.tar)
@@ -306,7 +327,7 @@ restore_backup () {
 
     logger $logName "INFO" "Restoring from backup snapshot... $backupFileName"
     local restoreBackupName=$(echo $backupFileName | cut -d "_" -f 1-5)
-    exec_wrapper $ERR_ACTION_EXIT $logName "yes yes | gitlab-rake gitlab:backup:restore BACKUP=$restoreBackupName"
+    exec_wrapper_no_print $ERR_ACTION_EXIT $logName "gitlab-rake gitlab:backup:restore BACKUP=$restoreBackupName force=yes"
     
     logger $logName "INFO" "Reconfiguring Gitlab"
     exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl reconfigure"
@@ -371,7 +392,7 @@ execute_backup () {
 
     # Archive and encrypt backup
     logger $logName "INFO" "Archiving and encrypting backup"
-    exec_wrapper $ERR_ACTION_EXIT $logName "7z a -p$GITLAB_BACKUP_PASSWORD $backupDir.zip ./$backupDir/*"
+    exec_wrapper_no_print $ERR_ACTION_EXIT $logName "7z a -p$GITLAB_BACKUP_PASSWORD $backupDir.zip ./$backupDir/*"
 
     # Upload archived backup
     logger $logName "INFO" "Uploading backup as: gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupArchiveFile"

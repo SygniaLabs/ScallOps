@@ -17,14 +17,15 @@ resource "google_compute_instance" "gitlab" {
                   google_secret_manager_secret_iam_binding.gitlab-self-crt-binding,
                   google_secret_manager_secret_iam_binding.gitlab_runner_registration_token,
                   google_secret_manager_secret_iam_binding.gitlab_initial_root_pwd,
-                  google_secret_manager_secret_iam_binding.gitlab_backup_key,
-                  google_secret_manager_secret_iam_binding.git_creds
+                  google_secret_manager_secret_iam_member.gitlab_backup_key,
+                  google_secret_manager_secret_iam_member.git_creds
                   ]
   provider     = google.offensive-pipeline
-  name         = "${var.infra_name}-gitlab"
+  name         = local.gitlab_instance_name
   machine_type = var.plans[var.size]
   zone         = "${var.region}-${var.zone}"
-  tags         = ["${var.infra_name}-gitlab"]
+  tags         = [local.gitlab_instance_name]
+
 
 
     service_account {
@@ -34,9 +35,9 @@ resource "google_compute_instance" "gitlab" {
   
     boot_disk {
       initialize_params {
-        image = var.osimages[var.osimage]
-        size  = "100"
-        type  = "pd-standard"
+        image = var.os_images[var.os_name][var.os_release]
+        size  = "160"
+        type  = "pd-ssd"
       }
     }
 
@@ -48,7 +49,7 @@ resource "google_compute_instance" "gitlab" {
 
   metadata = {
     gcs-prefix                                 = "gs://${google_storage_bucket.deployment_utils.name}"
-    gcs-path-to-backup                         = var.migrate_gitlab ? local.gitlab_migrate_backup : "NONE" # Migration var
+    gcs-path-to-backup                         = var.migrate_gitlab ? local.gitlab_migrate_backup : "NONE" # Migration var    
     startup-script-url                         = local.gitlab_startup_script
     instance-external-domain                   = var.external_hostname != "" ? var.external_hostname : local.instance_internal_domain
     instance-protocol                          = var.gitlab_instance_protocol
@@ -58,7 +59,8 @@ resource "google_compute_instance" "gitlab" {
     gitlab-ci-runner-registration-token-secret = google_secret_manager_secret.gitlab_runner_registration_token.secret_id
     gitlab-backup-key-secret                   = var.gitlab_backup_key_secret_id
     gitlab-backup-bucket-name                  = var.backups_bucket_name
-    gitlab-version                             = var.gitlab_version
+    target-gitlab-version                      = var.gitlab_version
+    gitlab-package-dl-link                     = local.gitlab_package_dl_link
     container-registry-host                    = local.gke_registry_host
     container-registry-namespace               = local.gke_registry_namespace
     scallops-recipes-git-url                   = var.scallops_recipes_git_url
@@ -85,11 +87,7 @@ resource "helm_release" "gitlab-runner-linux" {
  
   set {
     name  = "gitlabUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
-  }
-  set {
-    name  = "runners.cloneUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+    value =  local.instance_internal_url
   }
   set {
     name  = "certsSecretName"
@@ -111,6 +109,26 @@ resource "helm_release" "gitlab-runner-linux" {
     name  = "sessionServer.loadBalancerSourceRanges[0]"
     value = "${google_compute_instance.gitlab.network_interface.0.access_config.0.nat_ip}/32"
   }
+  set {
+    name  = "runners.config"
+    value = <<EOF
+    [[runners]]
+      executor = "kubernetes"
+      limit = 50
+      shell = "bash"
+      ${format("clone_url = '%s'", "${local.instance_internal_url}")}
+      [runners.kubernetes.node_selector]
+        "node_pool" = "linux-pool"
+      [runners.kubernetes]
+        namespace = "default"
+        poll_interval = 3
+        poll_timeout = 3600
+    EOF
+  }
+  set {
+    name  = "concurrent"
+    value = 50
+  }
 }
 
 
@@ -127,11 +145,7 @@ resource "helm_release" "gitlab-runner-kaniko" {
 
   set {
     name  = "gitlabUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
-  }
-  set {
-    name  = "runners.cloneUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+    value =  local.instance_internal_url
   }
   set {
     name  = "certsSecretName"
@@ -140,6 +154,28 @@ resource "helm_release" "gitlab-runner-kaniko" {
   set_sensitive {
     name  = "runnerRegistrationToken"
     value = "GR1348941${random_password.gitlab_runner_registration_token.result}-scallops-recipes"
+  }
+  set {
+    name  = "runners.config"
+    value = <<EOF
+    [[runners]]
+      executor = "kubernetes"
+      shell = "bash"
+      ${format("clone_url = '%s'", "${local.instance_internal_url}")}
+      
+      [runners.kubernetes.node_selector]
+        "node_pool" = "linux-pool"
+
+      [runners.kubernetes]
+        namespace = "sensitive"
+        poll_interval = 30
+        poll_timeout = 3600
+
+        [[runners.kubernetes.volumes.secret]]
+          name = "kaniko-secret"
+          mount_path = "/secret"
+          read_only = true        
+    EOF
   }
 }
 
@@ -157,24 +193,31 @@ resource "helm_release" "gitlab-runner-dockerhub" {
 
   set {
     name  = "gitlabUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
-  }
-  set {
-    name  = "runners.cloneUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+    value =  local.instance_internal_url
   }
   set {
     name  = "certsSecretName"
     value = "${local.instance_internal_domain}-cert"
   }
-  set {
-    name  = "runners.imagePullSecrets[0]"
-    value = kubernetes_secret.dockerhub-creds-config[0].metadata[0].name
-  }
   set_sensitive {
     name  = "runnerRegistrationToken"
     value = random_password.gitlab_runner_registration_token.result
   }
+  set {
+    name  = "runners.config"
+    value = <<EOF
+    [[runners]]
+      executor = "kubernetes"
+      shell = "bash"
+      ${format("clone_url = '%s'", "${local.instance_internal_url}")}
+      [runners.kubernetes.node_selector]
+        "node_pool" = "linux-pool"
+      [runners.kubernetes]
+        namespace = "sensitive"
+        poll_interval = 30
+        poll_timeout = 3600
+    EOF
+  }   
 }
 
 
@@ -190,11 +233,7 @@ resource "helm_release" "gitlab-runner-win" {
 
   set {
     name  = "gitlabUrl"
-    value = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
-  }
-  set {
-    name  = "runners.cloneUrl"
-    value =  "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+    value = local.instance_internal_url
   }
   set {
     name  = "certsSecretName"
@@ -204,4 +243,36 @@ resource "helm_release" "gitlab-runner-win" {
     name  = "runnerRegistrationToken"
     value = random_password.gitlab_runner_registration_token.result
   }
+  set {
+    name  = "runners.config"
+    value = <<EOF
+    [[runners]]
+      executor = "kubernetes"
+      limit = 30
+      shell = "pwsh"
+      ${format("clone_url = '%s'", "${local.instance_internal_url}")}
+      # The FF_USE_POWERSHELL_PATH_RESOLVER feature flag has to be enabled for PowerShell 
+      # to resolve paths for Windows correctly when Runner is operating in a Linux environment
+      # but targeting Windows nodes.
+      environment = ["FF_USE_POWERSHELL_PATH_RESOLVER=1"]
+
+      [runners.kubernetes.node_selector]
+        "node_pool" = "windows-pool"   
+        "kubernetes.io/arch" = "amd64"
+        "kubernetes.io/os" = "windows"
+        "node.kubernetes.io/windows-build" = "10.0.17763"
+
+      [runners.kubernetes.node_tolerations]
+        "node.kubernetes.io/os=windows" = "NoSchedule"
+
+      [runners.kubernetes]
+        namespace = "default"
+        poll_interval = 10
+        poll_timeout = 3600
+    EOF
+  }
+  set {
+    name  = "concurrent"
+    value = 30
+  }  
 }

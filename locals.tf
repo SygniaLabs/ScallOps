@@ -1,5 +1,14 @@
 locals {
-    instance_internal_domain  = "${var.infra_name}-gitlab.${var.region}-${var.zone}.c.${var.project_id}.internal"
+    gitlab_instance_name      = "${var.infra_name}-gitlab"
+    instance_internal_domain  = "${local.gitlab_instance_name}.${var.region}-${var.zone}.c.${var.project_id}.internal"
+    instance_internal_url     = "${var.gitlab_instance_protocol}://${local.instance_internal_domain}"
+    gitlab_package_dl_link    = join("/", [
+                                         "https://packages.gitlab.com/gitlab/gitlab-ee/packages",
+                                         "${var.os_name}",
+                                         "${var.os_release}",
+                                         "gitlab-ee_${var.gitlab_version}.0_amd64.deb",
+                                         "download.deb"
+                                         ])
     vpc_main_subnet           = "10.0.0.0/22" # 10.0.0.0 - 10.0.3.255 , 1024 IPs
     gke_pod_subnet            = "10.2.0.0/17" # 10.2.0.0 - 10.2.127.255 - 32,768 IPs.
     gke_svc_subnet            = "10.2.128.0/20" # 10.2.128.0 - 10.2.143.255 - 4096 IPs.
