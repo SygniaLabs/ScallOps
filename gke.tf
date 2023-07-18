@@ -246,7 +246,7 @@ resource "google_container_node_pool" "windows-pool" {
 
 resource "google_artifact_registry_repository" "containers" {
   location      = var.region
-  repository_id = "${var.infra_name}-containers"
+  repository_id = local.artifact_registry_id
   description   = "Container repository created by terraform for ${var.infra_name}"
   format        = "DOCKER"
   provider      = google.offensive-pipeline  
