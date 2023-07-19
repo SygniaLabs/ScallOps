@@ -2,19 +2,51 @@
 
 readonly RAILS_CMD_PATH=$(pwd)/railscmd.rb
 
-check_installation () {
+check_installation() {
     local logName=$1
-    #In case Gitlab instance get restarted, skip script.
-    logger $logName "INFO" "Checking whether Gitlab is installed"
-    GILAB_VERSION_FILE=/opt/gitlab/version-manifest.txt
+
+    # In case GitLab instance gets restarted, skip the script.
+    logger $logName "INFO" "Checking whether GitLab is installed"
+    GITLAB_VERSION_FILE=/opt/gitlab/version-manifest.txt
     GITLAB_INSTALLED="false"
-    if [ -f "$GILAB_VERSION_FILE" ]; then
-        logger $logName "DEBUG" "$GILAB_VERSION_FILE exists"
+
+    if [ -f "$GITLAB_VERSION_FILE" ]; then
+        logger $logName "DEBUG" "$GITLAB_VERSION_FILE exists"
         GITLAB_INSTALLED="true"
-        GITLAB_EE_VERSION=$(grep gitlab-ee $GILAB_VERSION_FILE | cut -d " " -f2)-ee
-        logger $logName "INFO" "Installed Gitlab version is $GITLAB_EE_VERSION"
-    else         
-        logger $logName "DEBUG" "$GILAB_VERSION_FILE does not exist"
+        GITLAB_EE_VERSION=$(grep gitlab-ee $GITLAB_VERSION_FILE | cut -d " " -f2)-ee
+        logger $logName "INFO" "Installed GitLab version is $GITLAB_EE_VERSION"
+    else
+        logger $logName "DEBUG" "$GITLAB_VERSION_FILE does not exist"
+    fi
+}
+
+check_upgrade() {
+    local logName=$1
+    local gitlabTargetVersion=$2
+
+    # Check if we wish to upgrade the Gitlab application
+    # Current GITLAB_EE_VERSION is required in the env.
+    logger $logName "INFO" "Checking whether we want to upgrade Gitlab"
+    if [ "$GITLAB_EE_VERSION" != "$gitlabTargetVersion" ]; then
+        logger $logName "INFO" "GitLab version $GITLAB_EE_VERSION does not match the target version $gitlabTargetVersion. Upgrading..."
+        # Skip the auto backup when making an upgrade
+        logger $logName "INFO" "Skipping auto backup"
+        exec_wrapper $ERR_ACTION_CONT $logName "touch /etc/gitlab/skip-auto-backup"
+
+        logger $logName "INFO" "Updating package soruces..."
+        exec_wrapper $ERR_ACTION_EXIT $logName "apt update"
+        exec_wrapper $ERR_ACTION_CONT $logName "apt-cache madison gitlab-ee"
+        
+        logger $logName "INFO" "Installing Gitlab at version $gitlabTargetVersion"
+        exec_wrapper $ERR_ACTION_EXIT $logName "apt install gitlab-ee=$gitlabTargetVersion.0"
+        
+        logger $logName "INFO" "Running checks..."
+        exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl status"
+        exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rake gitlab:check SANITIZE=true"
+        
+        logger $logName "INFO" "GitLab version upgraded successfully"
+    else
+        logger $logName "INFO" "GitLab is aligned with the targeted version"
     fi
 }
 
@@ -37,10 +69,16 @@ set_gitlab_vars () {
     INSTANCE_PROTOCOL=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/instance-protocol` #http/https
     INSTANCE_EXTERNAL_DOMAIN=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/instance-external-domain`
     EXTERNAL_IP=`curl -H "Metadata-Flavor: Google" http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip`
+    CONTAINER_REGISTRY_HOST=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/container-registry-host`
+    CONTAINER_REGISTRY_NAMESPACE=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/container-registry-namespace`
     
     #Ext URL
     EXTERNAL_URL="$INSTANCE_PROTOCOL://$INSTANCE_EXTERNAL_DOMAIN"
-    logger $logName "DEBUG" "Gitlab External URL will be $EXTERNAL_URL"   
+    logger $logName "DEBUG" "Gitlab External URL will be $EXTERNAL_URL"
+
+    #Container registry prefix
+    logger $logName "DEBUG" "Container registry prefix: $CONTAINER_REGISTRY_HOST/$CONTAINER_REGISTRY_NAMESPACE"
+
 }
 
 
@@ -79,7 +117,8 @@ reconfigure_gitlab () {
 
 gitlab_install () {
     local logName=$1
-    local gitlabVersion=$2
+    local gitlabPkg=$2
+    local pkgOutputName="gitlab-ee_amd64.deb"
     # Install Postfix non-interactive
     logger $logName "INFO" "Starting postfix installation for domain: $INSTANCE_EXTERNAL_DOMAIN"
     debconf-set-selections <<< "postfix postfix/mailname string $INSTANCE_EXTERNAL_DOMAIN"
@@ -87,13 +126,13 @@ gitlab_install () {
     exec_wrapper $ERR_ACTION_CONT $logName "apt-get install --assume-yes postfix"
 
     # Install Gitlab Server
-    logger $logName "INFO" "Setting up Gitlab installation at version $gitlabVersion"
+    logger $logName "INFO" "Setting up Gitlab installation"
     curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.deb.sh | bash
     #Specific version installation:
-    logger $logName "INFO" "Downloading Gitlab from https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$gitlabVersion.0_amd64.deb/download.deb"
-    exec_wrapper $ERR_ACTION_EXIT $logName "wget --content-disposition https://packages.gitlab.com/gitlab/gitlab-ee/packages/ubuntu/bionic/gitlab-ee_$gitlabVersion.0_amd64.deb/download.deb"
+    logger $logName "INFO" "Downloading Gitlab from $gitlabPkg"
+    exec_wrapper $ERR_ACTION_EXIT $logName "wget --content-disposition -O $pkgOutputName $gitlabPkg"
     logger $logName "INFO" "Installing Gitlab"
-    exec_wrapper $ERR_ACTION_EXIT $logName "dpkg -i gitlab-ee_$gitlabVersion.0_amd64.deb"
+    exec_wrapper $ERR_ACTION_EXIT $logName "dpkg -i $pkgOutputName"
     
     logger $logName "INFO" "Reconfiguring Gitlab"
     exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl reconfigure"
@@ -114,8 +153,8 @@ setup_cicd_vars () {
         CI_SERVER_HOST=$INSTANCE_INTERNAL_HOSTNAME 
         CI_SERVER_URL=$INSTANCE_INTERNAL_URL 
         CI_API_V4_URL=$INSTANCE_INTERNAL_API_V4_URL 
-        CONTAINER_REGISTRY_NAMESPACE=$GCP_PROJECT_ID 
-        CONTAINER_REGISTRY_HOST=gcr.io
+        CONTAINER_REGISTRY_NAMESPACE=$CONTAINER_REGISTRY_NAMESPACE 
+        CONTAINER_REGISTRY_HOST=$CONTAINER_REGISTRY_HOST
     " 
 
 }
@@ -129,8 +168,8 @@ create_cicd_vars () {
     echo "Ci::InstanceVariable.new(key: 'CI_SERVER_HOST', value: '$INSTANCE_INTERNAL_HOSTNAME').save" >> $RAILS_CMD_PATH
     echo "Ci::InstanceVariable.new(key: 'CI_SERVER_URL', value: '$INSTANCE_INTERNAL_URL').save" >> $RAILS_CMD_PATH
     echo "Ci::InstanceVariable.new(key: 'CI_API_V4_URL', value: '$INSTANCE_INTERNAL_API_V4_URL').save" >> $RAILS_CMD_PATH
-    echo "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_NAMESPACE', value: '$GCP_PROJECT_ID').save" >> $RAILS_CMD_PATH
-    echo "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_HOST', value: 'gcr.io').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_NAMESPACE', value: '$CONTAINER_REGISTRY_NAMESPACE').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.new(key: 'CONTAINER_REGISTRY_HOST', value: '$CONTAINER_REGISTRY_HOST').save" >> $RAILS_CMD_PATH
 
     exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH"
 
@@ -144,8 +183,8 @@ update_cicd_vars () {
     echo "Ci::InstanceVariable.where(key: 'CI_SERVER_HOST').update(value: '$INSTANCE_INTERNAL_HOSTNAME')" > $RAILS_CMD_PATH
     echo "Ci::InstanceVariable.where(key: 'CI_SERVER_URL').update(value: '$INSTANCE_INTERNAL_URL')" >> $RAILS_CMD_PATH
     echo "Ci::InstanceVariable.where(key: 'CI_API_V4_URL').update(value: '$INSTANCE_INTERNAL_API_V4_URL')" >> $RAILS_CMD_PATH
-    echo "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_NAMESPACE').update(value: '$GCP_PROJECT_ID').save" >> $RAILS_CMD_PATH
-    echo "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_HOST').update(value: 'gcr.io').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_NAMESPACE').update(value: '$CONTAINER_REGISTRY_NAMESPACE').save" >> $RAILS_CMD_PATH
+    echo "Ci::InstanceVariable.where(key: 'CONTAINER_REGISTRY_HOST').update(value: '$CONTAINER_REGISTRY_HOST').save" >> $RAILS_CMD_PATH
     
     exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rails runner $RAILS_CMD_PATH"
 }
@@ -274,23 +313,17 @@ restore_backup () {
     mkdir -p $backupDir
 
     logger $logName "INFO" "Extracting backup from $backupArchivePath to $backupDir"
-    exec_wrapper $ERR_ACTION_EXIT $logName "7z x -p$GITLAB_BACKUP_PASSWORD $backupArchivePath -o./$backupDir"
+    exec_wrapper_no_print $ERR_ACTION_EXIT $logName "7z x -p$GITLAB_BACKUP_PASSWORD $backupArchivePath -o./$backupDir"
 
+    # Stop Gitlab services
+    logger $logName "INFO" "Stopping Gitlab services: puma, sidekiq"
+    gitlab-ctl stop puma
+    gitlab-ctl stop sidekiq
+    gitlab-ctl status
 
     logger $logName "INFO" "Copying configuration files and certificates from $backupDir"
     cp $backupDir/gitlab* /etc/gitlab
     cp -R $backupDir/ssl /etc/gitlab
-
-    # Reconfigure installation
-    logger $logName "INFO" "Reconfiguring Gitlab"
-    exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl reconfigure"
-
-    # Stop Gitlab services
-    logger $logName "INFO" "Stopping Gitlab services: unicorn, puma, sidekiq"
-    gitlab-ctl stop unicorn
-    gitlab-ctl stop puma
-    gitlab-ctl stop sidekiq
-    gitlab-ctl status
 
     # Restore from backup
     local backupFileName=$(ls $backupDir | grep _gitlab_backup.tar)
@@ -300,7 +333,7 @@ restore_backup () {
 
     logger $logName "INFO" "Restoring from backup snapshot... $backupFileName"
     local restoreBackupName=$(echo $backupFileName | cut -d "_" -f 1-5)
-    exec_wrapper $ERR_ACTION_EXIT $logName "yes yes | gitlab-rake gitlab:backup:restore BACKUP=$restoreBackupName"
+    exec_wrapper_no_print $ERR_ACTION_EXIT $logName "gitlab-rake gitlab:backup:restore BACKUP=$restoreBackupName force=yes"
     
     logger $logName "INFO" "Reconfiguring Gitlab"
     exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl reconfigure"
@@ -353,7 +386,7 @@ execute_backup () {
     logger $logName "INFO" "Using backup: $mostRecentBackupName"
 
     logger $logName "INFO" "Copying DB backup, gitlab configurations and SSL ceritficates"
-    cp /var/opt/gitlab/backups/$mostRecentBackupName $backupDir/
+    mv /var/opt/gitlab/backups/$mostRecentBackupName $backupDir/
     cp /etc/gitlab/gitlab.rb $backupDir/
     cp /etc/gitlab/gitlab-secrets.json $backupDir/
     cp -R /etc/gitlab/ssl/ $backupDir/
@@ -365,7 +398,7 @@ execute_backup () {
 
     # Archive and encrypt backup
     logger $logName "INFO" "Archiving and encrypting backup"
-    exec_wrapper $ERR_ACTION_EXIT $logName "7z a -p$GITLAB_BACKUP_PASSWORD $backupDir.zip ./$backupDir/*"
+    exec_wrapper_no_print $ERR_ACTION_EXIT $logName "7z a -p$GITLAB_BACKUP_PASSWORD $backupDir.zip ./$backupDir/*"
 
     # Upload archived backup
     logger $logName "INFO" "Uploading backup as: gs://$GITLAB_BACKUPS_BUCKET_NAME/gitlab-backups/$backupArchiveFile"

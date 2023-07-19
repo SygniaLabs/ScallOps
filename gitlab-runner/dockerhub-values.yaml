@@ -13,18 +13,4 @@ rbac:
    
 runners:
   imagePullPolicy: always
-  protected: true
   tags: "dockerhub,kubernetes"
-  config: |
-    [[runners]]
-      executor = "kubernetes"
-      shell = "bash"
-      
-      [runners.kubernetes.node_selector]
-        "node_pool" = "linux-pool"
-
-      [runners.kubernetes]
-        namespace = "sensitive"
-        poll_interval = 30
-        poll_timeout = 3600
-        

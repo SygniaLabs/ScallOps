@@ -17,8 +17,13 @@ gitlab_backup_key_secret_id = "" #Required #PostDeploymentModifiable
 
 
 
-## Gitlab version to install (e.g. 15.2.1-ee)
-# gitlab_version = "15.2.1-ee" #Optional
+## Gitlab version to install
+## Ruuner chart version must be compaitibe with the Gitlab version -> https://docs.gitlab.com/runner/#gitlab-runner-versions
+## Note the Gitlab application version from the selected Chart version -> https://artifacthub.io/packages/helm/gitlab/gitlab-runner
+## You can make upgrades to your Gitlab instance from here. Just reset the instance once the `apply` completes.
+# gitlab_version = "16.1.2-ee"
+# runner_chart_url = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.54.0.tgz"
+
 
 ## IP addresses that can interact with the Gitlab instance via HTTP/S (Office IP / Home IPs)
 # operator_ips = [] #Optional #PostDeploymentModifiable

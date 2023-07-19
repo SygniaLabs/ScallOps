@@ -17,7 +17,7 @@ resource "tls_self_signed_cert" "gitlab-self-signed-cert" {
   }
   
   dns_names             = flatten([
-                            "${var.infra_name}-gitlab.local",
+                            "${local.gitlab_instance_name}.local",
                             local.instance_internal_domain,
                             var.external_hostname != "" ? [var.external_hostname] : []
                             ])
@@ -36,7 +36,7 @@ resource "tls_self_signed_cert" "gitlab-self-signed-cert" {
 
 resource "google_secret_manager_secret" "gitlab-self-signed-cert-key" {
   provider   = google.offensive-pipeline
-  secret_id  = "${var.infra_name}-gitlab-cert-key"
+  secret_id  = "${local.gitlab_instance_name}-cert-key"
   labels     = {
         label = "gitlab-cert"
   }
@@ -58,7 +58,7 @@ resource "google_secret_manager_secret_version" "gitlab-self-signed-cert-key-ver
 
 resource "google_secret_manager_secret" "gitlab-self-signed-cert-crt" {
   provider   = google.offensive-pipeline
-  secret_id  = "${var.infra_name}-gitlab-cert-crt"
+  secret_id  = "${local.gitlab_instance_name}-cert-crt"
   labels     = {
           label = "gitlab-cert"
   }
@@ -97,7 +97,7 @@ resource "random_password" "gitlab_initial_root_pwd" {
 
 resource "google_secret_manager_secret" "gitlab_runner_registration_token" {
   provider   = google.offensive-pipeline
-  secret_id  = "${var.infra_name}-gitlab-runner-reg"
+  secret_id  = "${local.gitlab_instance_name}-runner-reg"
   labels     = {
           label = "gitlab"
   }
@@ -120,7 +120,7 @@ resource "google_secret_manager_secret_version" "gitlab_runner_registration_toke
 # Gitlab initial root password
 resource "google_secret_manager_secret" "gitlab_initial_root_pwd" {
   provider   = google.offensive-pipeline
-  secret_id  = "${var.infra_name}-gitlab-root-password"
+  secret_id  = "${local.gitlab_instance_name}-root-password"
   labels     = {
           label = "gitlab"
   }

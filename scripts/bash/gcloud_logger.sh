@@ -52,3 +52,21 @@ exec_wrapper () {
     fi
     cat $STD_OUT_PATH
 }
+
+exec_wrapper_no_print () {
+    local errAction=$1
+    local logName=$2
+    local cmdExec=$3
+    echo "wrapper exec: no print."
+    $cmdExec 2> $STD_ERR_PATH
+    
+    local errCode=$?
+    if [ $errCode -ne 0 ]; then
+        errMsg=$(cat $STD_ERR_PATH)
+        logger $logName "ERROR" "ErrCode: $errCode, ErrAction: $errAction,  Message: $errMsg"
+        if [[ $errAction == $ERR_ACTION_EXIT ]]; then
+            logger $logName "DEBUG" "Stopping execution due to error action"
+            exit 1
+        fi
+    fi
+}

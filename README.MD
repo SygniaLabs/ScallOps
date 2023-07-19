@@ -1,8 +1,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=plastic)](https://opensource.org/licenses/MIT)
-![Terraform](https://img.shields.io/badge/Terraform-v1.2.8-8040c9.svg?style=plastic)
-![Gitlab](https://img.shields.io/badge/Gitlab-v15.2.1-fd7e14.svg?style=plastic)
-![GKE](https://img.shields.io/badge/GKE-1.24.2-1A73E8.svg?style=plastic)
-![ScallOps](https://img.shields.io/badge/ScallOps-v0.4-000000.svg?style=plastic)
+![Terraform](https://img.shields.io/badge/Terraform-v1.5.0-8040c9.svg?style=plastic)
+![Gitlab](https://img.shields.io/badge/Gitlab-v16.1.2-fd7e14.svg?style=plastic)
+![GKE](https://img.shields.io/badge/GKE-1.26.5-1A73E8.svg?style=plastic)
+![ScallOps](https://img.shields.io/badge/ScallOps-v0.5-000000.svg?style=plastic)
 
 # SCALLOPS
 
@@ -25,12 +25,12 @@ Refer to the [ScallOps-Recipes](https://github.com/SygniaLabs/ScallOps-Recipes) 
 * All Gitlab's CI/CD features for designning the Recipes.
 * Linux & Windows based operating systems for running the Recipes weaponization jobs.
 * On-demand automated node scalability (Google Kubernets Engine).
-* Access to work with private container images from your Google Container Registry (GCR).
+* Access to work with private container images from your Google Artifact Registry.
 * Ability to supply Docker Hub credentials and work with private container images from your Docker Hub account.
-* Capability to automatically build Dockerfiles and push the images to your GCR.
+* Capability to automatically build Dockerfiles and push the images to your Artifact Registry.
 * Automated, weekly Gitlab backup to a desginated bucket.
 * Attach external hostname to the framework using Google DNS managed zones.
-* Ability to migrate from an older Gitlab instance.
+* Ability to migrate from an older Gitlab instance or upgrade a deployed instance.
 
 ## Deployment
 
@@ -65,28 +65,33 @@ The code below is an example for *config.tfvars* file using all available option
 
 
 ## GCP Project ID
-project_id = "my-scallops" #Required
+project_id = "" #Required
 
 ## The name you wish to have as a prefix for the deployment's resources. Must comply with ^[a-z]([a-z0-9]*[a-z0-9])$
 infra_name = "scallops" #Required
 
 ## The name of an existing bucket you wish to receive backups to. Terraform will create the required permission to upload the backup archive.
-backups_bucket_name = "my-backups" #Required #PostDeploymentModifiable
+backups_bucket_name = "" #Required #PostDeploymentModifiable
 
 ## An existing secret ID in the same GCP project (project_id) storing a password for the backup process (Allowed symbols for secret value: -_ )
 ## Creating a secret through GCP secret manager https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#create
-gitlab_backup_key_secret_id = "scallops-backup-secret" #Required #PostDeploymentModifiable
+gitlab_backup_key_secret_id = "" #Required #PostDeploymentModifiable
 
 
 
-## Gitlab version to install (e.g. 15.2.1-ee)
-gitlab_version = "15.2.1-ee" #Optional
+## Gitlab version to install
+## Ruuner chart version must be compaitibe with the Gitlab version -> https://docs.gitlab.com/runner/#gitlab-runner-versions
+## Note the Gitlab application version from the selected Chart version -> https://artifacthub.io/packages/helm/gitlab/gitlab-runner
+## You can make upgrades to your Gitlab instance from here. Just reset the instance once the `apply` completes.
+# gitlab_version = "16.1.2-ee"
+# runner_chart_url = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.54.0.tgz"
+
 
 ## IP addresses that can interact with the Gitlab instance via HTTP/S (Office IP / Home IPs)
-operator_ips = ["1.2.3.4"] #Optional #PostDeploymentModifiable
+# operator_ips = [] #Optional #PostDeploymentModifiable
 
 ## Enable debugging resources such as IAP Firewall rules, and export of config files
-#debug_flag = true #Optional #PostDeploymentModifiable
+# debug_flag = false #Optional #PostDeploymentModifiable
 
 ## The Gitlab instance Web server protocol, http or https.
 # gitlab_instance_protocol = "https" #Optional
@@ -102,15 +107,22 @@ operator_ips = ["1.2.3.4"] #Optional #PostDeploymentModifiable
 ## External DNS ## #Optional #PostDeploymentModifiable #GitlabRestartRequired
 ## Uncomment the 3 lines below if wishing to supply external DNS name for accessing Gitalb instance
 
-dns_project_id = "orgdns"                           # The project ID where the managed DNS zone is located
-dns_managed_zone_name = "org-com"        # The configured managed DNS zone name
-external_hostname = "scallops.org.com"   # The hostname you wish to set of the instance (Must be subdomain of the managed zone)
+# dns_project_id = ""                           # The project ID where the managed DNS zone is located
+# dns_managed_zone_name = "mydomain-com"        # The configured managed DNS zone name
+# external_hostname = "scallops.mydomain.com"   # The hostname you wish to set of the instance (Must be subdomain of the managed zone)
 
 
 
 ## Docker hub credentials (https://docs.docker.com/docker-hub/access-tokens/) #Optional #PostDeploymentModifiable
 ## An existing secret name in secret-manager storing Dockerhub credentials to fetch private container images (format is username:password or username:access-token).
-dockerhub-creds-secret = "dockerhub-credentials"
+# dockerhub-creds-secret = ""
+
+
+## Scallops-Recipes repository. Use the default repository or specify alternative fork in a Git path HTTPS format.
+## The specified repository will be imported to Gitlab as the Scallops-Recipes repository.
+## *Ignored if performing a migration
+# scallops_recipes_git_url = "https://github.com/SygniaLabs/ScallOps-Recipes.git" #Optional
+# scallops_recipes_git_creds_secret = "my-github-creds-secret" #Optional
 
 
 
@@ -120,11 +132,11 @@ dockerhub-creds-secret = "dockerhub-credentials"
 ## 2. 'gitlab_version' must be equal to the version you are migrating from.
 ## 3. Operation requires Gsutil on the terraform deployer system as backup will be downloaded locally
 
-migrate_gitlab = true                   ## If performing migration from another Gitlab instance and got a backup file from previous instance. true/false.
-migrate_gitlab_backup_bucket = "my-backups"       ## The Google Storage Bucket to your Gitlab backup e.g. 'mybucket1-abcd'
-migrate_gitlab_backup_path = "gitlab-backups/scallops-gitlab-backup-16600000.zip"         ## The path to the archived backup zip e.g 'backups/gitlab-xxx-backup.zip'
+# migrate_gitlab = true                   ## If performing migration from another Gitlab instance and got a backup file from previous instance. true/false.
+# migrate_gitlab_backup_bucket = ""       ## The Google Storage Bucket to your Gitlab backup e.g. 'mybucket1-abcd'
+# migrate_gitlab_backup_path = ""         ## The path to the archived backup zip e.g 'backups/gitlab-xxx-backup.zip'
 
-## ### ### ### ####
+#####
 ```
 
 
@@ -210,11 +222,11 @@ The included Terraform scripts will deploy the following resources into your GCP
   - Windows node pool - For Windows related jobs
   - Gitlab-runner Helm packages (Linux-runner, Windows-runner, Kaniko-runner, \[dockerhub-privates-runner\])
 - Google Cloud Storage (GCS) - To store maintenance scripts
-- Google Container Registry (GCR) - To store cutomized container images
+- Google Artifact Registry - To store cutomized container images
 - Service Accounts
   1. Used by Gitlab Compute instance to pull maintenance scripts and store backup
   2. User who is attached to the GKE cluster nodes to pull container images from the project's registry (Read only)
-  3. User who is attached to the Kaniko CI job runner allowing to push customized container images to GCR (User has Storage Admin over the default GCR bucket - "artifacts.\<project-id\>.appspot.com" )
+  3. User who is attached to the Kaniko CI job runner allowing to push customized container images to Artifact Registry
 - VPC network and related firewall rules to allow operation
 
 <p align="center">
@@ -225,14 +237,20 @@ The included Terraform scripts will deploy the following resources into your GCP
 
 ## GCP Cloud Costs
 
-Idle:
+Idle / Minimal usage:
 * Gitlab Instance: 51.46$ / month (n1-standard-2)
 * 2 x Linux node: 2 x 10.83$ = 21.66$ / month (e2-highcpu-2 preemptible)
 * Windows node: 134.34$ / month (t2d-standard-4 preemptible)
-* Storage (depends on container images volume and backup size): 100GB - 2$ / month
+* Storage
+  * Utilities & Migration bucket: 20GB (depends on backup size) - 0.40$ / month
+  * Artifact Registry (depends on container images volume): 100GB - 9.95$ / month
+  * Boot Disks 
+    * Gitlab: Zonal SSD PD: 160 GB - 27.20$ / month
+    * GKE Linux: Zonal SSD PD: 100 GB - 17$ / month
+    * GKE Windows: Zonal SSD PD: 200 GB - 34$ / month
 * Secret manager: 0.06$ /month
 * GKE: One Zonal cluster is free per billing account
-* **Total: 250$ (us-central-1)** -- [source](https://cloud.google.com/products/calculator/#id=9fb07ad6-d965-4409-893e-edf216de4090)
+* **Total: 318$ (us-central-1)** -- [source](https://cloud.google.com/products/calculator/#id=a582ea75-5872-4616-8313-41192c043ae7)
 
 Per Job:
 * Linux: Same as idle since system already up. When scaled 0.015$ per hour for each running node.
