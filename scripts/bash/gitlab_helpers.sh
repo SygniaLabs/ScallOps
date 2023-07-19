@@ -4,7 +4,6 @@ readonly RAILS_CMD_PATH=$(pwd)/railscmd.rb
 
 check_installation() {
     local logName=$1
-    local gitlabTargetVersion=$2
 
     # In case GitLab instance gets restarted, skip the script.
     logger $logName "INFO" "Checking whether GitLab is installed"
@@ -16,31 +15,38 @@ check_installation() {
         GITLAB_INSTALLED="true"
         GITLAB_EE_VERSION=$(grep gitlab-ee $GITLAB_VERSION_FILE | cut -d " " -f2)-ee
         logger $logName "INFO" "Installed GitLab version is $GITLAB_EE_VERSION"
-
-        # Check if we wish to upgrade the Gitlab application
-        if [ "$GITLAB_EE_VERSION" != "$gitlabTargetVersion" ]; then
-            logger $logName "INFO" "GitLab version does not match the target version. Upgrading..."
-            # Skip the auto backup when making an upgrade
-            logger $logName "INFO" "Skipping auto backup"
-            exec_wrapper $ERR_ACTION_CONT $logName "touch /etc/gitlab/skip-auto-backup"
-
-            logger $logName "INFO" "Updating package soruces..."
-            exec_wrapper $ERR_ACTION_EXIT $logName "apt update"
-            exec_wrapper $ERR_ACTION_CONT $logName "apt-cache madison gitlab-ee"
-            
-            logger $logName "INFO" "Installing Gitlab at version $gitlabTargetVersion"
-            exec_wrapper $ERR_ACTION_EXIT $logName "apt install gitlab-ee=$gitlabTargetVersion.0"
-            
-            logger $logName "INFO" "Running checks..."
-            exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl status"
-            exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rake gitlab:check SANITIZE=true"
-           
-            logger $logName "INFO" "GitLab version upgraded successfully"
-        else
-            logger $logName "INFO" "GitLab is aligned with the targeted version"
-        fi
     else
         logger $logName "DEBUG" "$GITLAB_VERSION_FILE does not exist"
+    fi
+}
+
+check_upgrade() {
+    local logName=$1
+    local gitlabTargetVersion=$2
+
+    # Check if we wish to upgrade the Gitlab application
+    # Current GITLAB_EE_VERSION is required in the env.
+    logger $logName "INFO" "Checking whether we want to upgrade Gitlab"
+    if [ "$GITLAB_EE_VERSION" != "$gitlabTargetVersion" ]; then
+        logger $logName "INFO" "GitLab version $GITLAB_EE_VERSION does not match the target version $gitlabTargetVersion. Upgrading..."
+        # Skip the auto backup when making an upgrade
+        logger $logName "INFO" "Skipping auto backup"
+        exec_wrapper $ERR_ACTION_CONT $logName "touch /etc/gitlab/skip-auto-backup"
+
+        logger $logName "INFO" "Updating package soruces..."
+        exec_wrapper $ERR_ACTION_EXIT $logName "apt update"
+        exec_wrapper $ERR_ACTION_CONT $logName "apt-cache madison gitlab-ee"
+        
+        logger $logName "INFO" "Installing Gitlab at version $gitlabTargetVersion"
+        exec_wrapper $ERR_ACTION_EXIT $logName "apt install gitlab-ee=$gitlabTargetVersion.0"
+        
+        logger $logName "INFO" "Running checks..."
+        exec_wrapper $ERR_ACTION_CONT $logName "gitlab-ctl status"
+        exec_wrapper $ERR_ACTION_CONT $logName "gitlab-rake gitlab:check SANITIZE=true"
+        
+        logger $logName "INFO" "GitLab version upgraded successfully"
+    else
+        logger $logName "INFO" "GitLab is aligned with the targeted version"
     fi
 }
 

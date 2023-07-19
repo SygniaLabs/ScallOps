@@ -25,7 +25,7 @@ source ./gitlab_helpers.sh
 # Start
 logger $GCLOUD_LOG_NAME "INFO" "Starting Gitlab instance setup"
 
-check_installation $GCLOUD_LOG_NAME $GITLAB_TARGET_INSTALL_VERSION
+check_installation $GCLOUD_LOG_NAME
 set_gitlab_vars $GCLOUD_LOG_NAME
 
 if [ $GITLAB_INSTALLED == 'false' ]; then
@@ -54,6 +54,7 @@ if [ $GITLAB_INSTALLED == 'false' ]; then
 
 else
     logger $GCLOUD_LOG_NAME "INFO" "Skipping Gitlab installation"
+    check_upgrade $GCLOUD_LOG_NAME $GITLAB_TARGET_INSTALL_VERSION
 fi
 
 
