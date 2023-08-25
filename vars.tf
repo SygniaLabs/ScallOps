@@ -135,6 +135,11 @@ variable "operator_ports" {
     default     = ["443","80"]
 }
 
+variable "external_integration_ranges" {
+    type        = list(string)
+    description = "(optional) IP addresses used to for external integration with Gitlab"
+    default     = null
+}
 
 variable "region" {
     type        = string
