@@ -34,7 +34,7 @@ resource "google_compute_firewall" "operators" {
   network       = module.gcp-network.network_name
   provider      = google.offensive-pipeline
   source_ranges = var.operator_ips
-  target_tags   = ["${var.infra_name}-gitlab"]
+  target_tags   = [local.gitlab_instance_name]
   
   allow {
     protocol = "tcp"
@@ -49,7 +49,7 @@ resource "google_compute_firewall" "pods-to-gitlab-access" {
   network       = module.gcp-network.network_name
   provider      = google.offensive-pipeline
   source_ranges = [local.gke_pod_subnet]
-  target_tags   = ["${var.infra_name}-gitlab"]
+  target_tags   = [local.gitlab_instance_name]
 
   allow {
     protocol = "tcp"

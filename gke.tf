@@ -4,7 +4,7 @@
 ## K8s secrets and namespaces
 resource "kubernetes_secret" "google-application-credentials" {
   data        = {
-    "kaniko-token-secret.json" = base64decode(google_service_account_key.storage_admin_role.private_key)
+    "kaniko-token-secret.json" = base64decode(google_service_account_key.artifact_registry_writer.private_key)
   }
   metadata {
     name      = "kaniko-secret"
@@ -63,7 +63,7 @@ resource "kubernetes_secret" "k8s_gitlab_cert_secret" {
 
 # Pod disruption budget
 
-resource "kubernetes_pod_disruption_budget" "kube-dns" {
+resource "kubernetes_pod_disruption_budget_v1" "kube-dns" {
   depends_on  = [module.gke.google_container_node_pool]
   metadata {
     name      = "k8s-pdb-kube-dns"
@@ -80,7 +80,7 @@ resource "kubernetes_pod_disruption_budget" "kube-dns" {
 }
 
 
-resource "kubernetes_pod_disruption_budget" "konnectivity-agent" {
+resource "kubernetes_pod_disruption_budget_v1" "konnectivity-agent" {
   depends_on  = [module.gke.google_container_node_pool]
   metadata {
     name      = "k8s-pdb-konnectivity-agent"
@@ -101,7 +101,7 @@ resource "kubernetes_pod_disruption_budget" "konnectivity-agent" {
 
 module "gke" {
   source                     = "terraform-google-modules/kubernetes-engine/google"
-  version                    = "22.0.0" # https://github.com/terraform-google-modules/terraform-google-kubernetes-engine
+  version                    = "26.1.1" # https://github.com/terraform-google-modules/terraform-google-kubernetes-engine
   kubernetes_version         = var.gke_version
   project_id                 = var.project_id
   name                       = "${var.infra_name}-offensive-pipeline"
@@ -130,10 +130,11 @@ module "gke" {
       max_count              = 8
       local_ssd_count        = 0
       disk_size_gb           = 100
-      disk_type              = "pd-standard"
-      image_type             = "ubuntu_containerd"
-      auto_repair            = false
-      auto_upgrade           = false
+      disk_type              = "pd-ssd"
+      image_type             = "COS_CONTAINERD"
+      enable_gcfs            = true
+      auto_repair            = true
+      auto_upgrade           = true
       spot                   = true
       initial_node_count     = 1
     }     
@@ -185,7 +186,7 @@ resource "google_container_node_pool" "windows-pool" {
 
   node_config {
       disk_size_gb      = 200
-      disk_type         = "pd-standard"
+      disk_type         = "pd-ssd"
       guest_accelerator = []
       image_type        = "windows_ltsc_containerd"
       labels            = {
@@ -238,4 +239,15 @@ resource "google_container_node_pool" "windows-pool" {
     max_surge       = 2
     max_unavailable = 0
     }
+}
+
+
+### Artifact Registry Repository ###
+
+resource "google_artifact_registry_repository" "containers" {
+  location      = var.region
+  repository_id = local.artifact_registry_id
+  description   = "Container repository created by terraform for ${var.infra_name}"
+  format        = "DOCKER"
+  provider      = google.offensive-pipeline  
 }

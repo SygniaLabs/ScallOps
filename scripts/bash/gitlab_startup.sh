@@ -9,7 +9,8 @@
 
 #Vars
 DEPLOYMENT_GCS_PREFIX=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gcs-prefix`
-GITLAB_INSTALL_VERSION=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-version`
+GITLAB_TARGET_INSTALL_VERSION=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/target-gitlab-version`
+GITLAB_PKG_LINK=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gitlab-package-dl-link`
 GCS_PATH_TO_BACKUP=`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1/instance/attributes/gcs-path-to-backup`
 GCLOUD_LOG_NAME="gitlab-startup"
 BACKUP_ARCHIVE_PATH="/tmp/backup_archived.zip"
@@ -30,7 +31,7 @@ set_gitlab_vars $GCLOUD_LOG_NAME
 if [ $GITLAB_INSTALLED == 'false' ]; then
     logger $GCLOUD_LOG_NAME "INFO" "Starting Gitlab installation"
     gitlab_deps_install $GCLOUD_LOG_NAME 
-    gitlab_install $GCLOUD_LOG_NAME $GITLAB_INSTALL_VERSION
+    gitlab_install $GCLOUD_LOG_NAME $GITLAB_PKG_LINK
     setup_cicd_vars $GCLOUD_LOG_NAME
 
     if [ $GCS_PATH_TO_BACKUP == 'NONE' ]; then
@@ -53,6 +54,7 @@ if [ $GITLAB_INSTALLED == 'false' ]; then
 
 else
     logger $GCLOUD_LOG_NAME "INFO" "Skipping Gitlab installation"
+    check_upgrade $GCLOUD_LOG_NAME $GITLAB_TARGET_INSTALL_VERSION
 fi
 
 

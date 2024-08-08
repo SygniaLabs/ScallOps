@@ -1,5 +1,33 @@
 # Change Log
 
+## [0.5] - 2023-07-19
+### Added
+- Enabled runner session server on linux-runner to allow the use of Interactive Web Terminal (Job Debug button)
+
+### Changed
+- Shortened runner poll intervals
+- Optimize K8s performance
+    - Upgraded GKE to version 1.26.5
+    - Containers are now stored in Artifact Registry instead of deprecating Container Registry (GCR).
+    - Modified node pools disk type to SSD
+    - Modified Linux node image type to COS_CONTAINERD
+    - Enabled image streaming
+    - Upgraded related providers and modules
+    - Modified k8s pdb resources according to provider upgrades
+- Gitlab 16.1.2 upgrade
+    - Default to Gitlab 16.1.2-ee and runner 0.54.0
+    - Option to set target Gitlab version to upgrade the application from tf vars    
+    - Added relevant locals
+    - Added multiple ubuntu release options for the instance
+    - Changed runner TOML config to be set from terraform instead of Helm chart Yaml.
+    - Modified Gitlab instance disk to 160G SSD.
+    - Added Gitlab DEB package link metadata variable.
+  
+### Fixed
+- Backup creation bug. The created backup snapshot was not deleted after upload, causing overload to the local disk.
+- Modified IAM binding to add memeber instead of overwrite all members on user resources.
+- Fixed Gitlab restore bug via new exec-wrapper function.  
+
 ## [0.4] - 2022-10-22
 ### Added
 - Option to specify Scallop-Recipes repo URL (For auto import)

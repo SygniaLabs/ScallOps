@@ -68,7 +68,7 @@ variable "gitlab_instance_protocol" {
 variable "gitlab_version" {
     type        = string
     description = "Gitlab version to install (e.g. 15.2.1-ee). If performing migration, you must specify the Gitlab backup version from the previous instance"
-    default     = "15.2.1-ee"
+    default     = "16.1.2-ee"
     validation {
         condition     = can(regex("^[0-9]+.[0-9]+.[0-9]+-ee$", var.gitlab_version))
         error_message = "Invalid Gitlab version"
@@ -87,17 +87,27 @@ variable "size" {
     default = "2x8"
 }
 
-variable "osimages" {
+variable "os_images" {
   type       = map
   default    = {
-        "ubuntu" = "ubuntu-1804-bionic-v20210720"
+        "ubuntu" = {
+          "jammy" = "ubuntu-2204-lts"
+          "focal" = "ubuntu-2004-lts"
+          "bionic"   = "ubuntu-1804-lts"
+          }
   }
 }
 
-variable "osimage" {
+variable "os_name" {
   type        = string
   description = "(optional) OS Image"
   default     = "ubuntu"
+}
+
+variable "os_release" {
+  type        = string
+  description = "(optional) OS Image"
+  default     = "focal"
 }
 
 variable "scallops_recipes_git_url" {
@@ -144,25 +154,25 @@ variable "zone" {
 variable "gke_version" {
   description = "Kubernetes engine version"
   type        = string
-  default     = "1.24.2-gke.1900" # Available version -> https://cloud.google.com/kubernetes-engine/docs/release-notes
+  default     = "1.26.5-gke.1200" # Available version -> https://cloud.google.com/kubernetes-engine/docs/release-notes
 }
 
 variable "gke_linux_pool_version" {
   description = "GKE Linux node pool version"
   type        = string
-  default     = "1.24.2-gke.1900"
+  default     = "1.26.5-gke.1200"
 }
 
 variable "gke_windows_pool_version" {
   description = "GKE Windows node pool version"
   type        = string
-  default     = "1.24.2-gke.1900"
+  default     = "1.26.5-gke.1200"
 }
 
 variable "runner_chart_url" {
   description = "Gitlab runner Helm chart archive URL" # https://artifacthub.io/packages/helm/gitlab/gitlab-runner
   type        = string
-  default     = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.43.1.tgz" # Correspond to Gitlab 15.2.1
+  default     = "https://gitlab-charts.s3.amazonaws.com/gitlab-runner-0.54.0.tgz" # Correspond to Gitlab 16.1.0
 }
 
 

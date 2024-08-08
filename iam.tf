@@ -4,15 +4,15 @@
 
 # Gitlab compute instance service account
 resource "google_service_account" "gitlab_service_account" {
-  account_id   = "${var.infra_name}-gitlab-svc"
+  account_id   = "${local.gitlab_instance_name}-svc"
   display_name = "Gitlab Service Account"
   provider     = google.offensive-pipeline
 }
 
-# GKE Container with storage.admin permission service account (Capability to push container images to GCR.IO)
-resource "google_service_account" "gke_bucket_service_account" {
-  account_id   = "${var.infra_name}-gke-buckt"
-  display_name = "GKE Service Account for Pods to access buckets, push and pull containers"
+# Service account with capability to push container images to sepcific repository in artifact registry
+resource "google_service_account" "kaniko" {
+  account_id   = "${var.infra_name}-gke-bucket"
+  display_name = "Service Account for Pods to access artifact registry repository"
   provider     = google.offensive-pipeline
 }
 
@@ -91,16 +91,17 @@ resource "google_project_iam_binding" "compute_binding" {
 }
 
 
-# Bind gcr.io storage admin to the container pusher service account
-resource "google_storage_bucket_iam_member" "containeradmin_member" {
-  bucket    = "artifacts.${var.project_id}.appspot.com"  # Default prefix-suffix for container registry bucket
-  provider  = google.offensive-pipeline
-  role      = "roles/storage.admin"
-  member    = "serviceAccount:${google_service_account.gke_bucket_service_account.email}"
+# Bind artifact registry write access to specific repository
+resource "google_artifact_registry_repository_iam_member" "writer" {
+  project = google_artifact_registry_repository.containers.project
+  location = google_artifact_registry_repository.containers.location
+  repository = google_artifact_registry_repository.containers.name
+  role = "roles/artifactregistry.writer"
+  member = "serviceAccount:${google_service_account.kaniko.email}"
 }
 
-resource "google_service_account_key" "storage_admin_role" {
-  service_account_id = google_service_account.gke_bucket_service_account.name
+resource "google_service_account_key" "artifact_registry_writer" {
+  service_account_id = google_service_account.kaniko.name
 }
 
 
@@ -144,21 +145,17 @@ resource "google_secret_manager_secret_iam_binding" "gitlab_initial_root_pwd" {
 }
 
 
-resource "google_secret_manager_secret_iam_binding" "gitlab_backup_key" {
+resource "google_secret_manager_secret_iam_member" "gitlab_backup_key" {
   project    = var.project_id
   secret_id  = var.gitlab_backup_key_secret_id
   role       = "roles/secretmanager.secretAccessor"
-  members    = [
-    "serviceAccount:${google_service_account.gitlab_service_account.email}",
-  ]
+  member     = "serviceAccount:${google_service_account.gitlab_service_account.email}"
 }
 
-resource "google_secret_manager_secret_iam_binding" "git_creds" {
+resource "google_secret_manager_secret_iam_member" "git_creds" {
   count      = var.scallops_recipes_git_creds_secret != "" ? 1 : 0  
   project    = var.project_id
   secret_id  = var.scallops_recipes_git_creds_secret
   role       = "roles/secretmanager.secretAccessor"
-  members    = [
-    "serviceAccount:${google_service_account.gitlab_service_account.email}",
-  ]
+  member     = "serviceAccount:${google_service_account.gitlab_service_account.email}"
 }
