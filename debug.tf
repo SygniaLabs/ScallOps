@@ -15,7 +15,7 @@ resource "google_compute_firewall" "iap_pipeline" {
 
   source_ranges = ["35.235.240.0/20"]
   target_tags   = [
-                  "${var.infra_name}-gitlab",
+                  local.gitlab_instance_name,
                   local.gke_linux_pool_tag,
                   local.gke_win_pool_tag
                   ]
