@@ -1,5 +1,6 @@
 # Change Log
 
+
 ## [0.6] - 2024-08-19
 ### Added
 - Added LB resource and related resources
