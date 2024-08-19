@@ -69,6 +69,22 @@ resource "google_compute_instance" "gitlab" {
 }
 
 
+resource "google_compute_instance_group" "gitlab_instance" {
+  provider    = google.offensive-pipeline
+  name        = "${local.gitlab_instance_name}-grp"
+  description = "Instance group for Gitlab"
+  zone        = google_compute_instance.gitlab.zone
+  instances   = [google_compute_instance.gitlab.self_link]
+  
+  named_port {
+    name = "https"
+    port = 443
+  }
+  named_port {
+    name = "http"
+    port = 80
+  }
+}
 
 
 

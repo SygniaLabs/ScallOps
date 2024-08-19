@@ -68,6 +68,6 @@ resource "google_dns_record_set" "ext-dns" {
   type         = "A"
   ttl          = var.dns_record_ttl
   managed_zone = var.dns_managed_zone_name
-  rrdatas      = [google_compute_instance.gitlab.network_interface.0.access_config.0.nat_ip]
+  rrdatas      = [google_compute_global_forwarding_rule.lb_forward_rule.ip_address]
 }
 
