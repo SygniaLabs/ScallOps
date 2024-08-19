@@ -1,5 +1,16 @@
 # Change Log
 
+
+## [0.6] - 2024-08-19
+### Added
+- Added LB resource and related resources
+- Added application external Certificate service
+- Modify DNS record set to LB IP instead of Gitlab instance
+- Assigned Gitlab to instance group
+- Added option to specify external integration IP addresses.
+- Upgraded google terraform provider
+
+
 ## [0.5] - 2023-07-19
 ### Added
 - Enabled runner session server on linux-runner to allow the use of Interactive Web Terminal (Job Debug button)
